@@ -1,0 +1,11 @@
+{
+  "name": "purescript-coui",
+  "files": [],
+  "scripts": {
+    "build": "pulp browserify --optimise --to dist/cofree.js"
+  },
+  "dependencies": {
+    "react": "^0.14.8",
+    "react-dom": "^0.14.6"
+  }
+}

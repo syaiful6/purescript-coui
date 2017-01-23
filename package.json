@@ -1,6 +1,10 @@
 {
-  "name": "purescript-coui",
+  "private": true,
   "files": [],
+  "scripts": {
+    "clean": "rimraf output && rimraf .pulp-cache",
+    "example-cofree": "bower link && cd examples/cofree && bower link purescript-coui && bower install && npm run build"
+  },
   "dependencies": {
     "react": "^0.14.8",
     "react-dom": "^0.14.6"

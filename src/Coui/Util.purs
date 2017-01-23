@@ -1,4 +1,10 @@
-module Coui.Util where
+module Coui.Util
+  ( CoUIEff
+  , awaitLoad
+  , awaitBody
+  , selectElement
+  , runCoUIAff
+  ) where
 
 import Prelude
 

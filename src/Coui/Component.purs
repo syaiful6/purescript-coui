@@ -1,4 +1,18 @@
-module Coui.Component where
+module Coui.Component
+  ( PerformAction
+  , defaultDispatcher
+  , explore
+  , EventHandler
+  , Render
+  , UI
+  , Spec(..)
+  , spec
+  , simpleSpec
+  , createClass
+  , createReactSpec
+  , createReactSpec'
+  , runUI
+  ) where
 
 import Prelude
 
@@ -12,7 +26,8 @@ import Control.Monad.Free.Trans (resume)
 import Control.Monad.Rec.Class (Step(..), tailRecM)
 
 import Data.Either (Either(..))
-import Data.Functor.Pairing (Pairing)
+import Data.Functor.Pairing (Pairing, sym)
+import Data.Functor.Pairing.Co (Co, pairCo)
 import Data.Maybe (Maybe(..))
 
 import DOM (DOM)
@@ -22,14 +37,15 @@ import React as R
 import React.DOM as RD
 import ReactDOM as RDOM
 
-type Eval eff action m =
+
+type PerformAction eff m action =
   action -> CR.CoTransformer (Maybe (m Unit)) (m Unit) (Aff eff) Unit
 
-defaultDispatcher :: forall eff action m. Eval eff action m
+defaultDispatcher :: forall eff action m. PerformAction eff m action
 defaultDispatcher _ = pure unit
 
-modifyState :: forall eff m. m Unit -> CR.CoTransformer (Maybe (m Unit)) (m Unit) (Aff eff) (Maybe (m Unit))
-modifyState = CR.cotransform
+explore :: forall eff m. m Unit -> CR.CoTransformer (Maybe (m Unit)) (m Unit) (Aff eff) (Maybe (m Unit))
+explore = CR.cotransform
 
 type EventHandler =
   forall eff refs.
@@ -44,23 +60,33 @@ type Render props action = props -> (action -> EventHandler) -> Array R.ReactEle
 type UI w props action = w (Render props action)
 
 newtype Spec eff w m props action = Spec
-  { space :: UI w props action
-  , eval  :: Eval eff action m
-  , pair  :: Pairing m w
+  { space          :: UI w props action
+  , performAction  :: PerformAction eff m action
+  , pair           :: Pairing m w
   }
 
-simpleSpec
+-- | Manually create Spec by provides all spec field. See simpleSpec that use Co if you
+-- | don't want use explicit Pairing
+spec
   :: forall eff w m props action
-   . Eval eff action m
+   . PerformAction eff m action
   -> Pairing m w
   -> UI w props action
   -> Spec eff w m props action
-simpleSpec eval pair space = Spec { space, eval, pair }
+spec performAction pair space = Spec { space, performAction, pair }
+
+-- | An easy way to create spec by just provides UI and PerformAction.
+simpleSpec
+  :: forall eff w props action. Functor w
+  => PerformAction eff (Co w) action
+  -> UI w props action
+  -> Spec eff w (Co w) props action
+simpleSpec performAction space = Spec { space, performAction, pair: sym pairCo }
 
 createClass
   :: forall eff w m props action. Comonad w
   => Spec eff w m props action -> R.ReactClass props
-createClass spec = R.createClass <<< _.spec $ createReactSpec spec
+createClass spec' = R.createClass <<< _.spec $ createReactSpec spec'
 
 createReactSpec
   :: forall eff w m props action. Comonad w
@@ -77,8 +103,8 @@ createReactSpec'
   -> { spec :: R.ReactSpec props (UI w props action) eff
      , eval :: R.ReactThis props (UI w props action) -> action -> EventHandler
      }
-createReactSpec' wrap (Spec spec) =
-  { spec: R.spec spec.space render
+createReactSpec' wrap (Spec sp) =
+  { spec: R.spec sp.space render
   , eval: dispatcher
   }
   where
@@ -95,13 +121,13 @@ createReactSpec' wrap (Spec spec) =
               Left _ -> pure (Done unit)
               Right (CR.CoTransform m' k) -> do
                 st <- liftEff (coerceEff (R.readState this))
-                let ns = spec.pair (const id) m' (duplicate st)
+                let ns = sp.pair (const id) m' (duplicate st)
                 makeAff \_ k1 -> unsafeCoerceEff do
                   void $ R.writeStateWithCallback this ns (unsafeCoerceEff (k1 ns))
                 pure (Loop (k (Just m')))
 
           cotransformer :: CR.CoTransformer (Maybe (m Unit)) (m Unit) (Aff eff) Unit
-          cotransformer = spec.eval action
+          cotransformer = sp.performAction action
 
       unsafeCoerceEff (launchAff (tailRecM step cotransformer))
 

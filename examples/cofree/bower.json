@@ -1,0 +1,7 @@
+{
+  "name": "cofree-coui",
+  "private": true,
+  "dependencies": {
+    "purescript-coui": "*"
+  }
+}

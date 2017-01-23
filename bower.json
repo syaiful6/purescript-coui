@@ -1,5 +1,5 @@
 {
-  "name": "purescript-comonad-ui",
+  "name": "purescript-coui",
   "ignore": [
     "**/.*",
     "node_modules",
@@ -11,6 +11,7 @@
     "purescript-dom": "^3.1.0",
     "purescript-pairing": "^3.0.0",
     "purescript-react": "^2.0.0",
+    "purescript-react-dom": "^2.0.0",
     "purescript-freet": "^2.0.0",
     "purescript-aff": "^2.0.0",
     "purescript-coroutines": "^3.0.0"
