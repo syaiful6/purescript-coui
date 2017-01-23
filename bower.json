@@ -7,13 +7,15 @@
     "output"
   ],
   "dependencies": {
-    "purescript-console": "^1.0.0",
-    "purescript-react": "^1.1.0",
-    "purescript-pairing": "^1.1.0",
-    "purescript-day": "^1.0.0",
-    "purescript-react-dom": "^1.0.0"
+    "purescript-console": "^2.0.0",
+    "purescript-dom": "^3.1.0",
+    "purescript-pairing": "^3.0.0",
+    "purescript-react": "^2.0.0",
+    "purescript-freet": "^2.0.0",
+    "purescript-aff": "^2.0.0",
+    "purescript-coroutines": "^3.0.0"
   },
   "devDependencies": {
-    "purescript-psci-support": "^1.0.0"
+    "purescript-psci-support": "^2.0.0"
   }
 }
