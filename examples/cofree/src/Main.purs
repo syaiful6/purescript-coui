@@ -15,8 +15,9 @@ import Data.Maybe (Maybe(..))
 
 import React.DOM as R
 import React.DOM.Props as RP
-
 import Coui as C
+
+import Cofree.Store as CS
 
 -- work pairing directly
 data UpDown a = Up a | Down a
@@ -32,14 +33,14 @@ pairUpDownTwoButton f (Down a) (TwoButton _ b) = f a b
 -- | The Action
 data Action = Increment | Decrement
 
-ui :: forall props. Int -> C.UI (Cofree TwoButton) props Action
+ui :: Int -> C.UI (Cofree TwoButton) Action
 ui initial = unfoldCofree initial render twoButton
   where
     twoButton :: Int -> TwoButton Int
     twoButton state = TwoButton (state + 1) (state - 1)
 
-    render :: Int -> C.Render props Action
-    render state _ send =
+    render :: Int -> C.Render Action
+    render state send =
       [ R.h1' [ R.text "Cofree Counter - Comonad UI" ]
       , R.p' [ R.text "The state is: "
              , R.text (show state)
@@ -56,7 +57,7 @@ ui initial = unfoldCofree initial render twoButton
             ]
       ]
 
-performAction :: forall eff. C.PerformAction eff (Free UpDown) Action
+performAction :: forall eff. C.PerformAction (Free UpDown) (Aff eff) Action
 performAction Increment = do
   lift (delay 500)
   void $ C.explore (liftF (Up unit))
@@ -65,7 +66,7 @@ performAction Decrement = do
   void $ C.explore (liftF (Down unit))
 
 -- | The component spec
-counter :: forall eff props. Int -> C.Spec eff (Cofree TwoButton) (Free UpDown) props Action
+counter :: forall eff. Int -> C.Spec (Cofree TwoButton) (Free UpDown) (Aff eff) Action
 counter initial = C.spec performAction (freeCofree pairUpDownTwoButton) (ui initial)
 
 delay :: forall eff. Int -> Aff eff Unit
@@ -77,4 +78,4 @@ main = C.runCoUIAff do
   v <- C.selectElement "#app"
   case v of
     Nothing -> throwError (error "could not find #app")
-    Just el -> C.runUI (counter 0) {} el
+    Just el -> C.runUI (CS.counterStore 0) el

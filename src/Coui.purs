@@ -4,5 +4,6 @@ module Coui
   ) where
 
 import Coui.Component (PerformAction, defaultDispatcher, explore, EventHandler, Render,
-  UI, Spec(..), spec, simpleSpec, createClass, createReactSpec, createReactSpec', runUI)
+  UI, Spec(..), spec, simpleSpec, createClass, createReactSpec, createReactSpec', runUI,
+  hoistPerformAction)
 import Coui.Util (CoUIEff, awaitLoad, awaitBody, selectElement, runCoUIAff)
