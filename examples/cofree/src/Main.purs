@@ -72,10 +72,14 @@ counter initial = C.spec performAction (freeCofree pairUpDownTwoButton) (ui init
 delay :: forall eff. Int -> Aff eff Unit
 delay ms = later' ms (pure unit)
 
+testCombined i = C.combine' (\x y z ->
+    x z <> y z
+  ) (counter i) (CS.counterStore i)
+
 main :: forall eff. Eff (C.CoUIEff eff) Unit
 main = C.runCoUIAff do
   C.awaitLoad
   v <- C.selectElement "#app"
   case v of
     Nothing -> throwError (error "could not find #app")
-    Just el -> C.runUI (CS.counterStore 0) el
+    Just el -> C.runUI (testCombined 0) el

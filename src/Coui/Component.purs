@@ -1,11 +1,13 @@
 module Coui.Component
   ( PerformAction
   , defaultDispatcher
-  , explore
   , EventHandler
   , Render
   , UI
   , Spec(..)
+  , combine
+  , combine'
+  , explore
   , spec
   , simpleSpec
   , createClass
@@ -19,21 +21,23 @@ import Prelude
 
 import Control.Coroutine as CR
 import Control.Comonad (class Comonad, extract, duplicate)
-import Control.Monad.Aff (Aff, launchAff, makeAff)
+import Control.Monad.Aff (Aff, launchAff)
 import Control.Monad.Eff (Eff)
+import Control.Monad.Trans.Class (lift)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Unsafe (unsafeCoerceEff)
-import Control.Monad.Free.Trans (hoistFreeT, interpret, resume)
-import Control.Monad.Rec.Class (Step(..), tailRecM, forever)
+import Control.Monad.Free.Trans (hoistFreeT, interpret)
+import Control.Monad.Rec.Class (forever)
 
-import Data.Bifunctor as B
-import Data.Either (Either(..), either)
-import Data.Functor.Day (Day, day, runDay, pairDay)
+import Data.Either (Either(..))
+import Data.Functor.Day (Day, day, runDay)
 import Data.Functor.Pairing (Pairing, sym)
 import Data.Functor.Pairing.Co (Co, pairCo, runCo, co)
 import Data.Lens (Lens', lens)
-import Data.Maybe (Maybe(..))
 import Data.Profunctor (lmap)
+
+import Control.Comonad.Store (Store, store)
+import Control.Monad.State (modify)
 
 import DOM (DOM)
 import DOM.HTML.Types (HTMLElement, htmlElementToElement)
@@ -44,13 +48,13 @@ import ReactDOM as RDOM
 
 
 type PerformAction g m action =
-  action -> CR.CoTransformer (Maybe (g Unit)) (g Unit) m Unit
+  action -> CR.Producer (g Unit) m Unit
 
 defaultDispatcher :: forall g m action. Monad m => PerformAction g m action
 defaultDispatcher _ = pure unit
 
-explore :: forall g m. Monad m => g Unit -> CR.CoTransformer (Maybe (g Unit)) (g Unit) m (Maybe (g Unit))
-explore = CR.cotransform
+explore :: forall m o. Monad m => o -> CR.Producer o m Unit
+explore = CR.emit
 
 type EventHandler =
   forall eff refs.
@@ -124,23 +128,15 @@ createReactSpec' wrap (Spec sp) =
       let coerceEff :: forall eff1 a. Eff eff1 a -> Eff eff a
           coerceEff = unsafeCoerceEff
 
-          step :: CR.CoTransformer (Maybe (g Unit)) (g Unit) (Aff eff) Unit
-               -> Aff eff (Step (CR.CoTransformer (Maybe (g Unit)) (g Unit) (Aff eff) Unit) Unit)
-          step cot = do
-            e <- resume cot
-            case e of
-              Left _ -> pure (Done unit)
-              Right (CR.CoTransform m' k) -> do
-                st <- liftEff (coerceEff (R.readState this))
-                let ns = sp.pair (const id) m' (duplicate st)
-                makeAff \_ k1 -> unsafeCoerceEff do
-                  void $ R.writeStateWithCallback this ns (unsafeCoerceEff (k1 ns))
-                pure (Loop (k (Just m')))
+          consumer :: CR.Consumer (g Unit) (Aff eff) Unit
+          consumer = forever do
+            o <- CR.await
+            lift $ liftEff $ coerceEff (R.transformState this (sp.pair (const id) o <<< duplicate))
 
-          cotransformer :: CR.CoTransformer (Maybe (g Unit)) (g Unit) (Aff eff) Unit
-          cotransformer = sp.performAction action
+          producer :: CR.Producer (g Unit) (Aff eff) Unit
+          producer = sp.performAction action
 
-      unsafeCoerceEff (launchAff (tailRecM step cotransformer))
+      unsafeCoerceEff (launchAff (CR.runProcess (CR.connect producer consumer)))
 
     render :: R.Render props (UI w action) eff
     render this = do
@@ -159,8 +155,71 @@ hoistPerformAction nat (Spec s) = Spec $
   , performAction: hoistFreeT nat <<< s.performAction
   }
 
+combine
+  :: forall w1 w2 m act1 act2. (Comonad w1, Comonad w2, Monad m)
+  => (forall x. Render x -> Render x -> Render x)
+  -> Spec w1 (Co w1) m act1
+  -> Spec w2 (Co w2) m act2
+  -> Spec (Day w1 w2) (Co (Day w1 w2)) m (Either act1 act2)
+combine cobuild (Spec s1) (Spec s2) =
+  Spec { space: day build s1.space s2.space
+       , pair: sym pairCo
+       , performAction
+       }
+  where
+    build :: Render act1 -> Render act2 -> Render (Either act1 act2)
+    build x y = cobuild (lmap (_ `compose` Left) x) (lmap (_ `compose` Right) y)
+
+    performAction :: PerformAction (Co (Day w1 w2)) m (Either act1 act2)
+    performAction = case _ of
+      Left a' -> interpret (\(CR.Emit o r) -> CR.Emit (introCoDay1 o) r) (s1.performAction a')
+      Right b -> interpret (\(CR.Emit o r) -> CR.Emit (introCoDay2 o) r) (s2.performAction b)
+
+introCoDay1 :: forall w w' a. (Functor w, Comonad w') => Co w a -> Co (Day w w') a
+introCoDay1 a = co (runDay \f w w' -> runCo a (map (_ `f` extract w') w))
+
+introCoDay2 :: forall w w' a. (Functor w, Comonad w') => Co w a -> Co (Day w' w) a
+introCoDay2 a = co (runDay \f w' w -> runCo a (map (f (extract w')) w))
+
+type Rec f g =
+  { first :: f
+  , second :: g
+  }
+
+combine'
+  :: forall w1 w2 g1 g2 m act1 act2. (Comonad w1, Comonad w2, Monad m)
+  => (forall x. Render x -> Render x -> Render x)
+  -> Spec w1 g1 m act1
+  -> Spec w2 g2 m act2
+  -> Spec
+      (Store (Rec (UI w1 act1) (UI w2 act2)))
+      (Co (Store (Rec (UI w1 act1) (UI w2 act2))))
+      m
+      (Either act1 act2)
+combine' cobuild (Spec s1) (Spec s2) =
+  Spec { space: store build { first: s1.space, second: s2.space }
+       , pair: sym pairCo
+       , performAction
+       }
+  where
+    build { first, second } =
+      cobuild (lmap (_ `compose` Left) (extract first)) (lmap (_ `compose` Right) (extract second))
+
+    performAction :: PerformAction (Co (Store (Rec (UI w1 act1) (UI w2 act2)))) m (Either act1 act2)
+    performAction = case _ of
+      Left a' ->
+        interpret (\(CR.Emit o r) ->
+          let modifyFirst = modify \rc -> rc { first = s1.pair (const id) o (duplicate rc.first) }
+          in CR.Emit modifyFirst r)
+          (s1.performAction a')
+      Right b ->
+        interpret (\(CR.Emit o r) ->
+          let modifySecond = modify \rc -> rc { second = s2.pair (const id) o (duplicate rc.second) }
+          in CR.Emit modifySecond r)
+          (s2.performAction b)
+
 runUI
-  :: forall w g action eff. Comonad w
+  :: forall eff w g action. Comonad w
   => Spec w g (Aff eff) action
   -> HTMLElement
   -> Aff (dom :: DOM | eff) Unit
