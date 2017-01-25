@@ -22,6 +22,7 @@ import Prelude
 import Control.Coroutine as CR
 import Control.Comonad (class Comonad, extract, duplicate)
 import Control.Monad.Aff (Aff, launchAff)
+import Control.Monad.Aff.AVar as AV
 import Control.Monad.Eff (Eff)
 import Control.Monad.Trans.Class (lift)
 import Control.Monad.Eff.Class (liftEff)
@@ -33,7 +34,6 @@ import Data.Either (Either(..))
 import Data.Functor.Day (Day, day, runDay)
 import Data.Functor.Pairing (Pairing, sym)
 import Data.Functor.Pairing.Co (Co, pairCo, runCo, co)
-import Data.Lens (Lens', lens)
 import Data.Profunctor (lmap)
 
 import Control.Comonad.Store (Store, store)
@@ -56,13 +56,7 @@ defaultDispatcher _ = pure unit
 explore :: forall m o. Monad m => o -> CR.Producer o m Unit
 explore = CR.emit
 
-type EventHandler =
-  forall eff refs.
-    Eff ( props :: R.ReactProps
-        , state :: R.ReactState R.ReadWrite
-        , refs :: R.ReactRefs refs
-        | eff
-        ) Unit
+type EventHandler = forall eff. Eff (state :: R.ReactState R.ReadWrite | eff) Unit
 
 type Render action = (action -> EventHandler) -> Array R.ReactElement
 
@@ -73,6 +67,10 @@ newtype Spec w g m action = Spec
   , performAction  :: PerformAction g m action
   , pair           :: Pairing g w
   }
+
+-- | move the space
+moveSpace :: forall w m a. Comonad w => Pairing m w -> m Unit -> UI w a -> UI w a
+moveSpace pair m = pair (const id) m <<< duplicate
 
 -- | Manually create Spec by provides all spec field. See simpleSpec that use Co if you
 -- | don't want use explicit Pairing
@@ -91,12 +89,6 @@ simpleSpec
   -> UI w action
   -> Spec w (Co w) m action
 simpleSpec performAction space = Spec { space, performAction, pair: sym pairCo }
-
-_performAction :: forall w g m f. Lens' (Spec w g m f) (PerformAction g m f)
-_performAction = lens (\(Spec s) -> s.performAction) (\(Spec s) pa -> Spec (s { performAction = pa }))
-
-_space :: forall w g m f. Lens' (Spec w g m f) (UI w f)
-_space = lens (\(Spec s) -> s.space) (\(Spec s) sa -> Spec (s { space = sa }))
 
 createClass
   :: forall w g action eff props. Comonad w
