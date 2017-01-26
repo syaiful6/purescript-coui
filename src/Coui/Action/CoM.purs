@@ -15,12 +15,9 @@ import Control.Monad.Trans.Class (class MonadTrans, lift)
 import Control.Monad.Writer.Class (class MonadTell, tell)
 import Control.Parallel.Class (class Parallel)
 
-import Data.Bifunctor (lmap)
 import Data.Foreign (Foreign)
-import Data.List as L
 import Data.Maybe (Maybe)
 import Data.Newtype (class Newtype, over)
-import Data.Tuple (Tuple)
 
 import Coui.Action.EventSource as ES
 import Coui.Action.ForkF as FF
@@ -63,7 +60,7 @@ instance functorCoM :: Functor (CoM f i o m) where
 instance applyCoM :: Apply (CoM f i o m) where
   apply (CoM fa) (CoM fb) = CoM (apply fa fb)
 
-instance applicativeCoM :: Applicative (CoM f im) where
+instance applicativeCoM :: Applicative (CoM f i o m) where
   pure a = CoM (pure a)
 
 instance bindCoM :: Bind (CoM f i o m) where
@@ -84,10 +81,10 @@ instance parallelCoM :: Parallel (CoAp f i o m) (CoM f i o m) where
 instance monadForkCoM :: MonadAff eff m => MonadFork Error (CoM f i o m) where
   fork a = map liftAff <$> CoM (liftF $ Fork $ FF.fork a)
 
-instance monadTransCoM :: MonadTrans (CoM f i o m) where
+instance monadTransCoM :: MonadTrans (CoM f i o) where
   lift m = CoM $ liftF $ Lift m
 
-instance monadCoM :: MonadRec (CoM f i o m) where
+instance monadRecCoM :: MonadRec (CoM f i o m) where
   tailRecM k a = k a >>= go
     where
     go (Loop x) = tailRecM k x
@@ -97,7 +94,7 @@ instance monadStateCoM :: MonadState s m => MonadState s (CoM f i o m) where
   state = lift <<< state
 
 instance monadAskCoM :: MonadAsk r m => MonadAsk r (CoM f i o m) where
-  ask = lift <<< ask
+  ask = lift ask
 
 instance monadTellHalogenM :: MonadTell w m => MonadTell w (CoM f i o m) where
   tell = lift <<< tell
@@ -115,3 +112,22 @@ subscribe es = CoM $ liftF $ Subscribe es unit
 
 raise :: forall f i o m. o -> CoM f i o m Unit
 raise o = CoM $ liftF $ Raise o unit
+
+hoist
+  :: forall f i o m m'
+   . Functor m'
+  => (m ~> m')
+  -> CoM f i o m
+  ~> CoM f i o m'
+hoist nat (CoM fa) = CoM (hoistFree go fa)
+  where
+  go :: CoF f i o m ~> CoF f i o m'
+  go = case _ of
+    Explore fx a -> Explore fx a
+    Lift m -> Lift (nat m)
+    Subscribe es a -> Subscribe (ES.hoist nat es) a
+    Halt s -> Halt s
+    Raise o a -> Raise o a
+    Par p -> Par (over CoAp (hoistFreeAp (hoist nat)) p)
+    Fork f -> Fork (FF.hoistFork (hoist nat) f)
+    GetRef p k -> GetRef p k

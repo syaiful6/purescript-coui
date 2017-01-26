@@ -131,656 +131,656 @@ import Coui.HTML.Properties (I, IProp, GlobalProperties, InteractiveEvents)
 
 
 -- | An HTML element that admits children.
-type Node r p i
+type Node r i
    = Array (IProp (InteractiveEvents (GlobalProperties r)) i)
-  -> Array (HTML p i)
-  -> HTML p i
+  -> Array (HTML i)
+  -> HTML i
 
 -- | A `Node` that doesn't support mouse events.
-type NoninteractiveNode r p i
+type NoninteractiveNode r i
    = Array (IProp (GlobalProperties r) i)
-  -> Array (HTML p i)
-  -> HTML p i
+  -> Array (HTML i)
+  -> HTML i
 
 -- | An HTML element that does not admit children.
-type Leaf r p i
+type Leaf r i
    = Array (IProp (InteractiveEvents (GlobalProperties r)) i)
-  -> HTML p i
+  -> HTML i
 
 -- | An `Leaf` that doesn't support mouse events.
-type NoninteractiveLeaf r p i
+type NoninteractiveLeaf r i
    = Array (IProp (GlobalProperties r) i)
-  -> HTML p i
+  -> HTML i
 
 -- | Creates an HTML element that expects indexed properties.
-element :: forall r p i. ElemName -> Array (IProp r i) -> Array (HTML p i) -> HTML p i
-element = (unsafeCoerce :: (ElemName -> Array (Prop i) -> Array (HTML p i) -> HTML p i) -> ElemName -> Array (IProp r i) -> Array (HTML p i) -> HTML p i) Core.element
+element :: forall r i. ElemName -> Array (IProp r i) -> Array (HTML i) -> HTML i
+element = (unsafeCoerce :: (ElemName -> Array (Prop i) -> Array (HTML i) -> HTML i) -> ElemName -> Array (IProp r i) -> Array (HTML i) -> HTML i) Core.element
 
 -- | Creates an HTML element that expects indexed properties, with keyed
 -- | children.
-keyed :: forall r p i. ElemName -> Array (IProp r i) -> Array (Tuple String (HTML p i)) -> HTML p i
-keyed = (unsafeCoerce :: (ElemName -> Array (Prop i) -> Array (Tuple String (HTML p i)) -> HTML p i) -> ElemName -> Array (IProp r i) -> Array (Tuple String (HTML p i)) -> HTML p i) Core.keyed
+keyed :: forall r i. ElemName -> Array (IProp r i) -> Array (Tuple String (HTML i)) -> HTML i
+keyed = (unsafeCoerce :: (ElemName -> Array (Prop i) -> Array (Tuple String (HTML i)) -> HTML i) -> ElemName -> Array (IProp r i) -> Array (Tuple String (HTML i)) -> HTML i) Core.keyed
 
-withKeys :: forall r p i. (Array (IProp r i) -> Array (HTML p i) -> HTML p i) -> Array (IProp r i) -> Array (Tuple String (HTML p i)) -> HTML p i
+withKeys :: forall r i. (Array (IProp r i) -> Array (HTML i) -> HTML i) -> Array (IProp r i) -> Array (Tuple String (HTML i)) -> HTML i
 withKeys ctor props children =
   case ctor props [] of
     HTML (VDom.Elem spec _) -> HTML (VDom.Keyed spec (coe children))
     h -> h
   where
-  coe :: Array (Tuple String (HTML p i)) -> Array (Tuple String (VDom.VDom (Array (Prop (InputF Unit i))) p))
+  coe :: forall p. Array (Tuple String (HTML i)) -> Array (Tuple String (VDom.VDom (Array (Prop (InputF Unit i))) p))
   coe = unsafeCoerce
 
-withKeys_ :: forall p i. (Array (HTML p i) -> HTML p i) -> Array (Tuple String (HTML p i)) -> HTML p i
+withKeys_ :: forall i. (Array (HTML i) -> HTML i) -> Array (Tuple String (HTML i)) -> HTML i
 withKeys_ ctor children =
   case ctor [] of
     HTML (VDom.Elem spec _) -> HTML (VDom.Keyed spec (coe children))
     h -> h
   where
-  coe :: Array (Tuple String (HTML p i)) -> Array (Tuple String (VDom.VDom (Array (Prop (InputF Unit i))) p))
+  coe :: forall p. Array (Tuple String (HTML i)) -> Array (Tuple String (VDom.VDom (Array (Prop (InputF Unit i))) p))
   coe = unsafeCoerce
 
-a :: forall p i. Node (download :: I, href :: I, hreflang :: I, mediate :: I, rel :: I, target :: I, mediaType :: I) p i
+a :: forall i. Node (download :: I, href :: I, hreflang :: I, mediate :: I, rel :: I, target :: I, mediaType :: I) i
 a = element (ElemName "a")
 
-a_ :: forall p i. Array (HTML p i) -> HTML p i
+a_ :: forall i. Array (HTML i) -> HTML i
 a_ = a []
 
-abbr :: forall p i. Node () p i
+abbr :: forall i. Node () i
 abbr = element (ElemName "abbr")
 
-abbr_ :: forall p i. Array (HTML p i) -> HTML p i
+abbr_ :: forall i. Array (HTML i) -> HTML i
 abbr_ = abbr []
 
-address :: forall p i. Node (onScroll :: I) p i
+address :: forall i. Node (onScroll :: I) i
 address = element (ElemName "address")
 
-address_ :: forall p i. Array (HTML p i) -> HTML p i
+address_ :: forall i. Array (HTML i) -> HTML i
 address_ = address []
 
-area :: forall p i. Leaf (coords :: I, download :: I, href :: I, hreflang :: I, media :: I, rel :: I, shape :: I, target :: I, mediaType :: I) p i
+area :: forall i. Leaf (coords :: I, download :: I, href :: I, hreflang :: I, media :: I, rel :: I, shape :: I, target :: I, mediaType :: I) i
 area props = element (ElemName "area") props []
 
-article :: forall p i. Node () p i
+article :: forall i. Node () i
 article = element (ElemName "article")
 
-article_ :: forall p i. Array (HTML p i) -> HTML p i
+article_ :: forall i. Array (HTML i) -> HTML i
 article_ = article []
 
-aside :: forall p i. Node () p i
+aside :: forall i. Node () i
 aside = element (ElemName "aside")
 
-aside_ :: forall p i. Array (HTML p i) -> HTML p i
+aside_ :: forall i. Array (HTML i) -> HTML i
 aside_ = aside []
 
-audio :: forall p i. Node (autoplay :: I, controls :: I, loop :: I, muted :: I, preload :: I, src :: I) p i
+audio :: forall i. Node (autoplay :: I, controls :: I, loop :: I, muted :: I, preload :: I, src :: I) i
 audio = element (ElemName "audio")
 
-audio_ :: forall p i. Array (HTML p i) -> HTML p i
+audio_ :: forall i. Array (HTML i) -> HTML i
 audio_ = audio []
 
-b :: forall p i. Node () p i
+b :: forall i. Node () i
 b = element (ElemName "b")
 
-b_ :: forall p i. Array (HTML p i) -> HTML p i
+b_ :: forall i. Array (HTML i) -> HTML i
 b_ = b []
 
-base :: forall p i. NoninteractiveLeaf (href :: I, target :: I) p i
+base :: forall i. NoninteractiveLeaf (href :: I, target :: I) i
 base props = element (ElemName "base") props []
 
-bdi :: forall p i. Node () p i
+bdi :: forall i. Node () i
 bdi = element (ElemName "bdi")
 
-bdi_ :: forall p i. Array (HTML p i) -> HTML p i
+bdi_ :: forall i. Array (HTML i) -> HTML i
 bdi_ = bdi []
 
-bdo :: forall p i. NoninteractiveNode () p i
+bdo :: forall i. NoninteractiveNode () i
 bdo = element (ElemName "bdo")
 
-bdo_ :: forall p i. Array (HTML p i) -> HTML p i
+bdo_ :: forall i. Array (HTML i) -> HTML i
 bdo_ = bdo []
 
-blockquote :: forall p i. Node (cite :: I, onScroll :: I) p i
+blockquote :: forall i. Node (cite :: I, onScroll :: I) i
 blockquote = element (ElemName "blockquote")
 
-blockquote_ :: forall p i. Array (HTML p i) -> HTML p i
+blockquote_ :: forall i. Array (HTML i) -> HTML i
 blockquote_ = blockquote []
 
-body :: forall p i. Node (onBeforeUnload :: I, onHashChange :: I, onLoad :: I, onPageShow :: I, onPageHide :: I, onResize :: I, onScroll :: I, onUnload :: I) p i
+body :: forall i. Node (onBeforeUnload :: I, onHashChange :: I, onLoad :: I, onPageShow :: I, onPageHide :: I, onResize :: I, onScroll :: I, onUnload :: I) i
 body = element (ElemName "body")
 
-body_ :: forall p i. Array (HTML p i) -> HTML p i
+body_ :: forall i. Array (HTML i) -> HTML i
 body_ = body []
 
-br :: forall p i. NoninteractiveLeaf () p i
+br :: forall i. NoninteractiveLeaf () i
 br props = element (ElemName "br") props []
 
-br_ :: forall p i. HTML p i
+br_ :: forall i. HTML i
 br_ = br []
 
-button :: forall p i. Node (autofocus :: I, disabled :: I, form :: I, formaction :: I, formenctyp :: I, formmethod :: I, formnovalidate :: I, formtaget :: I, buttonType :: I, name :: I, value :: I) p i
+button :: forall i. Node (autofocus :: I, disabled :: I, form :: I, formaction :: I, formenctyp :: I, formmethod :: I, formnovalidate :: I, formtaget :: I, buttonType :: I, name :: I, value :: I) i
 button = element (ElemName "button")
 
-button_ :: forall p i. Array (HTML p i) -> HTML p i
+button_ :: forall i. Array (HTML i) -> HTML i
 button_ = button []
 
-canvas :: forall p i. Leaf (width :: I, height :: I) p i
+canvas :: forall i. Leaf (width :: I, height :: I) i
 canvas props = element (ElemName "canvas") props []
 
-caption :: forall p i. Node (align :: I, onScroll :: I) p i
+caption :: forall i. Node (align :: I, onScroll :: I) i
 caption = element (ElemName "caption")
 
-caption_ :: forall p i. Array (HTML p i) -> HTML p i
+caption_ :: forall i. Array (HTML i) -> HTML i
 caption_ = caption []
 
-cite :: forall p i. Node () p i
+cite :: forall i. Node () i
 cite = element (ElemName "cite")
 
-cite_ :: forall p i. Array (HTML p i) -> HTML p i
+cite_ :: forall i. Array (HTML i) -> HTML i
 cite_ = cite []
 
-code :: forall p i. Node () p i
+code :: forall i. Node () i
 code = element (ElemName "code")
 
-code_ :: forall p i. Array (HTML p i) -> HTML p i
+code_ :: forall i. Array (HTML i) -> HTML i
 code_ = code []
 
-col :: forall p i. Leaf () p i
+col :: forall i. Leaf () i
 col props = element (ElemName "col") props []
 
-colgroup :: forall p i. Node (span :: I) p i
+colgroup :: forall i. Node (span :: I) i
 colgroup = element (ElemName "colgroup")
 
-colgroup_ :: forall p i. Array (HTML p i) -> HTML p i
+colgroup_ :: forall i. Array (HTML i) -> HTML i
 colgroup_ = colgroup []
 
-command :: forall p i. Leaf () p i
+command :: forall i. Leaf () i
 command props = element (ElemName "command") props []
 
-datalist :: forall p i. Node () p i
+datalist :: forall i. Node () i
 datalist = element (ElemName "datalist")
 
-datalist_ :: forall p i. Array (HTML p i) -> HTML p i
+datalist_ :: forall i. Array (HTML i) -> HTML i
 datalist_ = datalist []
 
-dd :: forall p i. Node (onScroll :: I) p i
+dd :: forall i. Node (onScroll :: I) i
 dd = element (ElemName "dd")
 
-dd_ :: forall p i. Array (HTML p i) -> HTML p i
+dd_ :: forall i. Array (HTML i) -> HTML i
 dd_ = dd []
 
-del :: forall p i. Node (cite :: I, datetime :: I) p i
+del :: forall i. Node (cite :: I, datetime :: I) i
 del = element (ElemName "del")
 
-del_ :: forall p i. Array (HTML p i) -> HTML p i
+del_ :: forall i. Array (HTML i) -> HTML i
 del_ = del []
 
-details :: forall p i. Node (open :: I) p i
+details :: forall i. Node (open :: I) i
 details = element (ElemName "details")
 
-details_ :: forall p i. Array (HTML p i) -> HTML p i
+details_ :: forall i. Array (HTML i) -> HTML i
 details_ = details []
 
-dfn :: forall p i. Node () p i
+dfn :: forall i. Node () i
 dfn = element (ElemName "dfn")
 
-dfn_ :: forall p i. Array (HTML p i) -> HTML p i
+dfn_ :: forall i. Array (HTML i) -> HTML i
 dfn_ = dfn []
 
-dialog :: forall p i. Node (open :: I) p i
+dialog :: forall i. Node (open :: I) i
 dialog = element (ElemName "dialog")
 
-dialog_ :: forall p i. Array (HTML p i) -> HTML p i
+dialog_ :: forall i. Array (HTML i) -> HTML i
 dialog_ = dialog []
 
-div :: forall p i. Node (onScroll :: I) p i
+div :: forall i. Node (onScroll :: I) i
 div = element (ElemName "div")
 
-div_ :: forall p i. Array (HTML p i) -> HTML p i
+div_ :: forall i. Array (HTML i) -> HTML i
 div_ = div []
 
-dl :: forall p i. Node (onScroll :: I) p i
+dl :: forall i. Node (onScroll :: I) i
 dl = element (ElemName "dl")
 
-dl_ :: forall p i. Array (HTML p i) -> HTML p i
+dl_ :: forall i. Array (HTML i) -> HTML i
 dl_ = dl []
 
-dt :: forall p i. Node (onScroll :: I) p i
+dt :: forall i. Node (onScroll :: I) i
 dt = element (ElemName "dt")
 
-dt_ :: forall p i. Array (HTML p i) -> HTML p i
+dt_ :: forall i. Array (HTML i) -> HTML i
 dt_ = dt []
 
-em :: forall p i. Node () p i
+em :: forall i. Node () i
 em = element (ElemName "em")
 
-em_ :: forall p i. Array (HTML p i) -> HTML p i
+em_ :: forall i. Array (HTML i) -> HTML i
 em_ = em []
 
-embed :: forall p i. Node (height :: I, src :: I, mediaType :: I, width :: I) p i
+embed :: forall i. Node (height :: I, src :: I, mediaType :: I, width :: I) i
 embed = element (ElemName "embed")
 
-embed_ :: forall p i. Array (HTML p i) -> HTML p i
+embed_ :: forall i. Array (HTML i) -> HTML i
 embed_ = embed []
 
-fieldset :: forall p i. Node (disabled :: I, form :: I, onScroll :: I, name :: I) p i
+fieldset :: forall i. Node (disabled :: I, form :: I, onScroll :: I, name :: I) i
 fieldset = element (ElemName "fieldset")
 
-fieldset_ :: forall p i. Array (HTML p i) -> HTML p i
+fieldset_ :: forall i. Array (HTML i) -> HTML i
 fieldset_ = fieldset []
 
-figcaption :: forall p i. Node () p i
+figcaption :: forall i. Node () i
 figcaption = element (ElemName "figcaption")
 
-figcaption_ :: forall p i. Array (HTML p i) -> HTML p i
+figcaption_ :: forall i. Array (HTML i) -> HTML i
 figcaption_ = figcaption []
 
-figure :: forall p i. Node () p i
+figure :: forall i. Node () i
 figure = element (ElemName "figure")
 
-figure_ :: forall p i. Array (HTML p i) -> HTML p i
+figure_ :: forall i. Array (HTML i) -> HTML i
 figure_ = figure []
 
-footer :: forall p i. Node () p i
+footer :: forall i. Node () i
 footer = element (ElemName "footer")
 
-footer_ :: forall p i. Array (HTML p i) -> HTML p i
+footer_ :: forall i. Array (HTML i) -> HTML i
 footer_ = footer []
 
-form :: forall p i. Node (acceptCharset :: I, action :: I, autocomplete :: I, enctype :: I, method :: I, onReset :: I, novalidate :: I, onScroll :: I, onSubmit :: I, target :: I, name :: I) p i
+form :: forall i. Node (acceptCharset :: I, action :: I, autocomplete :: I, enctype :: I, method :: I, onReset :: I, novalidate :: I, onScroll :: I, onSubmit :: I, target :: I, name :: I) i
 form = element (ElemName "form")
 
-form_ :: forall p i. Array (HTML p i) -> HTML p i
+form_ :: forall i. Array (HTML i) -> HTML i
 form_ = form []
 
-h1 :: forall p i. Node (onScroll :: I) p i
+h1 :: forall i. Node (onScroll :: I) i
 h1 = element (ElemName "h1")
 
-h1_ :: forall p i. Array (HTML p i) -> HTML p i
+h1_ :: forall i. Array (HTML i) -> HTML i
 h1_ = h1 []
 
-h2 :: forall p i. Node (onScroll :: I) p i
+h2 :: forall i. Node (onScroll :: I) i
 h2 = element (ElemName "h2")
 
-h2_ :: forall p i. Array (HTML p i) -> HTML p i
+h2_ :: forall i. Array (HTML i) -> HTML i
 h2_ = h1 []
 
-h3 :: forall p i. Node (onScroll :: I) p i
+h3 :: forall i. Node (onScroll :: I) i
 h3 = element (ElemName "h3")
 
-h3_ :: forall p i. Array (HTML p i) -> HTML p i
+h3_ :: forall i. Array (HTML i) -> HTML i
 h3_ = h1 []
 
-h4 :: forall p i. Node (onScroll :: I) p i
+h4 :: forall i. Node (onScroll :: I) i
 h4 = element (ElemName "h4")
 
-h4_ :: forall p i. Array (HTML p i) -> HTML p i
+h4_ :: forall i. Array (HTML i) -> HTML i
 h4_ = h1 []
 
-h5 :: forall p i. Node (onScroll :: I) p i
+h5 :: forall i. Node (onScroll :: I) i
 h5 = element (ElemName "h5")
 
-h5_ :: forall p i. Array (HTML p i) -> HTML p i
+h5_ :: forall i. Array (HTML i) -> HTML i
 h5_ = h1 []
 
-h6 :: forall p i. Node (onScroll :: I) p i
+h6 :: forall i. Node (onScroll :: I) i
 h6 = element (ElemName "h6")
 
-h6_ :: forall p i. Array (HTML p i) -> HTML p i
+h6_ :: forall i. Array (HTML i) -> HTML i
 h6_ = h1 []
 
-head :: forall p i. NoninteractiveNode () p i
+head :: forall i. NoninteractiveNode () i
 head = element (ElemName "head")
 
-head_ :: forall p i. Array (HTML p i) -> HTML p i
+head_ :: forall i. Array (HTML i) -> HTML i
 head_ = head []
 
-header :: forall p i. Node () p i
+header :: forall i. Node () i
 header = element (ElemName "header")
 
-header_ :: forall p i. Array (HTML p i) -> HTML p i
+header_ :: forall i. Array (HTML i) -> HTML i
 header_ = header []
 
-hr :: forall p i. Leaf () p i
+hr :: forall i. Leaf () i
 hr props = element (ElemName "hr") props []
 
-hr_ :: forall p i. HTML p i
+hr_ :: forall i. HTML i
 hr_ = hr []
 
-html :: forall p i. NoninteractiveNode (manifest :: I, xmlns :: I, onScroll :: I) p i
+html :: forall i. NoninteractiveNode (manifest :: I, xmlns :: I, onScroll :: I) i
 html = element (ElemName "html")
 
-html_ :: forall p i. Array (HTML p i) -> HTML p i
+html_ :: forall i. Array (HTML i) -> HTML i
 html_ = html []
 
-i :: forall p i. Node () p i
+i :: forall i. Node () i
 i = element (ElemName "i")
 
-i_ :: forall p i. Array (HTML p i) -> HTML p i
+i_ :: forall i. Array (HTML i) -> HTML i
 i_ = i []
 
-iframe :: forall p i. NoninteractiveLeaf (onLoad :: I, sandbox :: I, scrolling :: I, src :: I, srcdoc :: I, width :: I, height :: I, name :: I) p i
+iframe :: forall i. NoninteractiveLeaf (onLoad :: I, sandbox :: I, scrolling :: I, src :: I, srcdoc :: I, width :: I, height :: I, name :: I) i
 iframe props = element (ElemName "iframe") props []
 
-img :: forall p i. Leaf (alt :: I, crossorigin :: I, height :: I, ismap :: I, longdesc :: I, onAbort :: I, onError :: I, onLoad :: I, src :: I, usemap :: I, width :: I) p i
+img :: forall i. Leaf (alt :: I, crossorigin :: I, height :: I, ismap :: I, longdesc :: I, onAbort :: I, onError :: I, onLoad :: I, src :: I, usemap :: I, width :: I) i
 img props = element (ElemName "img") props []
 
-input :: forall p i. Leaf (accept :: I, autocomplete :: I, autofocus :: I, checked :: I, disabled :: I, form :: I, formaction :: I, formenctype :: I, formmethod :: I, formnovalidate :: I, formtarget :: I, height :: I, list :: I, max :: I, min :: I, multiple :: I, onAbort :: I, onChange :: I, onError :: I, onInput :: I, onInvalid :: I, onLoad :: I, onSearch :: I, onSelect :: I, pattern :: I, placeholder :: I, readonly :: I, required :: I, size :: I, src :: I, step :: I, inputType :: I, value :: I, width :: I, name :: I) p i
+input :: forall i. Leaf (accept :: I, autocomplete :: I, autofocus :: I, checked :: I, disabled :: I, form :: I, formaction :: I, formenctype :: I, formmethod :: I, formnovalidate :: I, formtarget :: I, height :: I, list :: I, max :: I, min :: I, multiple :: I, onAbort :: I, onChange :: I, onError :: I, onInput :: I, onInvalid :: I, onLoad :: I, onSearch :: I, onSelect :: I, pattern :: I, placeholder :: I, readonly :: I, required :: I, size :: I, src :: I, step :: I, inputType :: I, value :: I, width :: I, name :: I) i
 input props = element (ElemName "input") props []
 
-ins :: forall p i. Node (cite :: I, datetime :: I) p i
+ins :: forall i. Node (cite :: I, datetime :: I) i
 ins = element (ElemName "ins")
 
-ins_ :: forall p i. Array (HTML p i) -> HTML p i
+ins_ :: forall i. Array (HTML i) -> HTML i
 ins_ = ins []
 
-kbd :: forall p i. Node () p i
+kbd :: forall i. Node () i
 kbd = element (ElemName "kbd")
 
-kbd_ :: forall p i. Array (HTML p i) -> HTML p i
+kbd_ :: forall i. Array (HTML i) -> HTML i
 kbd_ = kbd []
 
-keygen :: forall p i. Leaf (autofocus :: I, challenge :: I, disabled :: I, form :: I, keytype :: I, onChange :: I, onReset :: I, onSelect :: I, onSubmit :: I, name :: I) p i
+keygen :: forall i. Leaf (autofocus :: I, challenge :: I, disabled :: I, form :: I, keytype :: I, onChange :: I, onReset :: I, onSelect :: I, onSubmit :: I, name :: I) i
 keygen props = element (ElemName "keygen") props []
 
-label :: forall p i. Node (for :: I, form :: I) p i
+label :: forall i. Node (for :: I, form :: I) i
 label = element (ElemName "label")
 
-label_ :: forall p i. Array (HTML p i) -> HTML p i
+label_ :: forall i. Array (HTML i) -> HTML i
 label_ = label []
 
-legend :: forall p i. Node () p i
+legend :: forall i. Node () i
 legend = element (ElemName "legend")
 
-legend_ :: forall p i. Array (HTML p i) -> HTML p i
+legend_ :: forall i. Array (HTML i) -> HTML i
 legend_ = legend []
 
-li :: forall p i. Node (value :: I, onScroll :: I) p i
+li :: forall i. Node (value :: I, onScroll :: I) i
 li = element (ElemName "li")
 
-li_ :: forall p i. Array (HTML p i) -> HTML p i
+li_ :: forall i. Array (HTML i) -> HTML i
 li_ = li []
 
-link :: forall p i. Leaf (crossorigin :: I, href :: I, hreflang :: I, media :: I, onLoad :: I, rel :: I, sizes :: I, mediaType :: I) p i
+link :: forall i. Leaf (crossorigin :: I, href :: I, hreflang :: I, media :: I, onLoad :: I, rel :: I, sizes :: I, mediaType :: I) i
 link props = element (ElemName "link") props []
 
-main :: forall p i. Node () p i
+main :: forall i. Node () i
 main = element (ElemName "main")
 
-main_ :: forall p i. Array (HTML p i) -> HTML p i
+main_ :: forall i. Array (HTML i) -> HTML i
 main_ = main []
 
-map :: forall p i. Node (name :: I) p i
+map :: forall i. Node (name :: I) i
 map = element (ElemName "map")
 
-map_ :: forall p i. Array (HTML p i) -> HTML p i
+map_ :: forall i. Array (HTML i) -> HTML i
 map_ = map []
 
-mark :: forall p i. Node () p i
+mark :: forall i. Node () i
 mark = element (ElemName "mark")
 
-mark_ :: forall p i. Array (HTML p i) -> HTML p i
+mark_ :: forall i. Array (HTML i) -> HTML i
 mark_ = mark []
 
-menu :: forall p i. Node (label :: I, onScroll :: I, menuType :: I) p i
+menu :: forall i. Node (label :: I, onScroll :: I, menuType :: I) i
 menu = element (ElemName "menu")
 
-menu_ :: forall p i. Array (HTML p i) -> HTML p i
+menu_ :: forall i. Array (HTML i) -> HTML i
 menu_ = menu []
 
-menuitem :: forall p i. Node (checked :: I, command :: I, default :: I, disabled :: I, icon :: I, label :: I, radiogroup :: I, menuitemType :: I) p i
+menuitem :: forall i. Node (checked :: I, command :: I, default :: I, disabled :: I, icon :: I, label :: I, radiogroup :: I, menuitemType :: I) i
 menuitem = element (ElemName "menuitem")
 
-menuitem_ :: forall p i. Array (HTML p i) -> HTML p i
+menuitem_ :: forall i. Array (HTML i) -> HTML i
 menuitem_ = menuitem []
 
-meta :: forall p i. NoninteractiveLeaf (charset :: I, content :: I, httpEquiv :: I, name :: I) p i
+meta :: forall i. NoninteractiveLeaf (charset :: I, content :: I, httpEquiv :: I, name :: I) i
 meta props = element (ElemName "meta") props []
 
-meter :: forall p i. Node (form :: I, high :: I, low :: I, max :: I, min :: I, optimum :: I, value :: I) p i
+meter :: forall i. Node (form :: I, high :: I, low :: I, max :: I, min :: I, optimum :: I, value :: I) i
 meter = element (ElemName "meter")
 
-meter_ :: forall p i. Array (HTML p i) -> HTML p i
+meter_ :: forall i. Array (HTML i) -> HTML i
 meter_ = meter []
 
-nav :: forall p i. Node () p i
+nav :: forall i. Node () i
 nav = element (ElemName "nav")
 
-nav_ :: forall p i. Array (HTML p i) -> HTML p i
+nav_ :: forall i. Array (HTML i) -> HTML i
 nav_ = nav []
 
-noscript :: forall p i. Node () p i
+noscript :: forall i. Node () i
 noscript = element (ElemName "noscript")
 
-noscript_ :: forall p i. Array (HTML p i) -> HTML p i
+noscript_ :: forall i. Array (HTML i) -> HTML i
 noscript_ = noscript []
 
-object :: forall p i. Node (data :: I, form :: I, height :: I, onError :: I, onScroll :: I, mediaType :: I, usemap :: I, width :: I, name :: I) p i
+object :: forall i. Node (data :: I, form :: I, height :: I, onError :: I, onScroll :: I, mediaType :: I, usemap :: I, width :: I, name :: I) i
 object = element (ElemName "object")
 
-object_ :: forall p i. Array (HTML p i) -> HTML p i
+object_ :: forall i. Array (HTML i) -> HTML i
 object_ = object []
 
-ol :: forall p i. Node (onScroll :: I, reversed :: I, start :: I, olType :: I) p i
+ol :: forall i. Node (onScroll :: I, reversed :: I, start :: I, olType :: I) i
 ol = element (ElemName "ol")
 
-ol_ :: forall p i. Array (HTML p i) -> HTML p i
+ol_ :: forall i. Array (HTML i) -> HTML i
 ol_ = ol []
 
-optgroup :: forall p i. Node (disabled :: I, label :: I) p i
+optgroup :: forall i. Node (disabled :: I, label :: I) i
 optgroup = element (ElemName "optgroup")
 
-optgroup_ :: forall p i. Array (HTML p i) -> HTML p i
+optgroup_ :: forall i. Array (HTML i) -> HTML i
 optgroup_ = optgroup []
 
-option :: forall p i. Node (disabled :: I, label :: I, selected :: I, value :: I) p i
+option :: forall i. Node (disabled :: I, label :: I, selected :: I, value :: I) i
 option = element (ElemName "option")
 
-option_ :: forall p i. Array (HTML p i) -> HTML p i
+option_ :: forall i. Array (HTML i) -> HTML i
 option_ = option []
 
-output :: forall p i. Node (for :: I, form :: I, name :: I) p i
+output :: forall i. Node (for :: I, form :: I, name :: I) i
 output = element (ElemName "output")
 
-output_ :: forall p i. Array (HTML p i) -> HTML p i
+output_ :: forall i. Array (HTML i) -> HTML i
 output_ = output []
 
-p :: forall p i. Node (onScroll :: I) p i
+p :: forall i. Node (onScroll :: I) i
 p = element (ElemName "p")
 
-p_ :: forall p i. Array (HTML p i) -> HTML p i
+p_ :: forall i. Array (HTML i) -> HTML i
 p_ = p []
 
-param :: forall p i. NoninteractiveLeaf (value :: I, name :: I) p i
+param :: forall i. NoninteractiveLeaf (value :: I, name :: I) i
 param props = element (ElemName "param") props []
 
-pre :: forall p i. Node (onScroll :: I) p i
+pre :: forall i. Node (onScroll :: I) i
 pre = element (ElemName "pre")
 
-pre_ :: forall p i. Array (HTML p i) -> HTML p i
+pre_ :: forall i. Array (HTML i) -> HTML i
 pre_ = pre []
 
-progress :: forall p i. Node (max :: I, value :: I) p i
+progress :: forall i. Node (max :: I, value :: I) i
 progress = element (ElemName "progress")
 
-progress_ :: forall p i. Array (HTML p i) -> HTML p i
+progress_ :: forall i. Array (HTML i) -> HTML i
 progress_ = progress []
 
-q :: forall p i. Node (cite :: I) p i
+q :: forall i. Node (cite :: I) i
 q = element (ElemName "q")
 
-q_ :: forall p i. Array (HTML p i) -> HTML p i
+q_ :: forall i. Array (HTML i) -> HTML i
 q_ = q []
 
-rp :: forall p i. Node () p i
+rp :: forall i. Node () i
 rp = element (ElemName "rp")
 
-rp_ :: forall p i. Array (HTML p i) -> HTML p i
+rp_ :: forall i. Array (HTML i) -> HTML i
 rp_ = rp []
 
-rt :: forall p i. Node () p i
+rt :: forall i. Node () i
 rt = element (ElemName "rt")
 
-rt_ :: forall p i. Array (HTML p i) -> HTML p i
+rt_ :: forall i. Array (HTML i) -> HTML i
 rt_ = rt []
 
-ruby :: forall p i. Node () p i
+ruby :: forall i. Node () i
 ruby = element (ElemName "ruby")
 
-ruby_ :: forall p i. Array (HTML p i) -> HTML p i
+ruby_ :: forall i. Array (HTML i) -> HTML i
 ruby_ = ruby []
 
-samp :: forall p i. Node () p i
+samp :: forall i. Node () i
 samp = element (ElemName "samp")
 
-samp_ :: forall p i. Array (HTML p i) -> HTML p i
+samp_ :: forall i. Array (HTML i) -> HTML i
 samp_ = samp []
 
-script :: forall p i. NoninteractiveNode (async :: I, charset :: I, defer :: I, onError :: I, onLoad :: I, src :: I, mediaType :: I) p i
+script :: forall i. NoninteractiveNode (async :: I, charset :: I, defer :: I, onError :: I, onLoad :: I, src :: I, mediaType :: I) i
 script = element (ElemName "script")
 
-script_ :: forall p i. Array (HTML p i) -> HTML p i
+script_ :: forall i. Array (HTML i) -> HTML i
 script_ = script []
 
-section :: forall p i. Node () p i
+section :: forall i. Node () i
 section = element (ElemName "section")
 
-section_ :: forall p i. Array (HTML p i) -> HTML p i
+section_ :: forall i. Array (HTML i) -> HTML i
 section_ = section []
 
-select :: forall p i. Node (autofocus :: I, disabled :: I, form :: I, multiple :: I, onChange :: I, onScroll :: I, required :: I, size :: I, value :: I, selectedIndex :: I, name :: I) p i
+select :: forall i. Node (autofocus :: I, disabled :: I, form :: I, multiple :: I, onChange :: I, onScroll :: I, required :: I, size :: I, value :: I, selectedIndex :: I, name :: I) i
 select = element (ElemName "select")
 
-select_ :: forall p i. Array (HTML p i) -> HTML p i
+select_ :: forall i. Array (HTML i) -> HTML i
 select_ = select []
 
-small :: forall p i. Node () p i
+small :: forall i. Node () i
 small = element (ElemName "small")
 
-small_ :: forall p i. Array (HTML p i) -> HTML p i
+small_ :: forall i. Array (HTML i) -> HTML i
 small_ = small []
 
-source :: forall p i. Leaf (media :: I, src :: I, mediaType :: I) p i
+source :: forall i. Leaf (media :: I, src :: I, mediaType :: I) i
 source props = element (ElemName "source") props []
 
-span :: forall p i. Node () p i
+span :: forall i. Node () i
 span = element (ElemName "span")
 
-span_ :: forall p i. Array (HTML p i) -> HTML p i
+span_ :: forall i. Array (HTML i) -> HTML i
 span_ = span []
 
-strong :: forall p i. Node () p i
+strong :: forall i. Node () i
 strong = element (ElemName "strong")
 
-strong_ :: forall p i. Array (HTML p i) -> HTML p i
+strong_ :: forall i. Array (HTML i) -> HTML i
 strong_ = strong []
 
-style :: forall p i. NoninteractiveNode (media :: I, onError :: I, onLoad :: I, scoped :: I, mediaType :: I) p i
+style :: forall i. NoninteractiveNode (media :: I, onError :: I, onLoad :: I, scoped :: I, mediaType :: I) i
 style = element (ElemName "style")
 
-style_ :: forall p i. Array (HTML p i) -> HTML p i
+style_ :: forall i. Array (HTML i) -> HTML i
 style_ = style []
 
-sub :: forall p i. Node () p i
+sub :: forall i. Node () i
 sub = element (ElemName "sub")
 
-sub_ :: forall p i. Array (HTML p i) -> HTML p i
+sub_ :: forall i. Array (HTML i) -> HTML i
 sub_ = sub []
 
-summary :: forall p i. Node () p i
+summary :: forall i. Node () i
 summary = element (ElemName "summary")
 
-summary_ :: forall p i. Array (HTML p i) -> HTML p i
+summary_ :: forall i. Array (HTML i) -> HTML i
 summary_ = summary []
 
-sup :: forall p i. Node () p i
+sup :: forall i. Node () i
 sup = element (ElemName "sup")
 
-sup_ :: forall p i. Array (HTML p i) -> HTML p i
+sup_ :: forall i. Array (HTML i) -> HTML i
 sup_ = sup []
 
-table :: forall p i. Node (sortable :: I) p i
+table :: forall i. Node (sortable :: I) i
 table = element (ElemName "table")
 
-table_ :: forall p i. Array (HTML p i) -> HTML p i
+table_ :: forall i. Array (HTML i) -> HTML i
 table_ = table []
 
-tbody :: forall p i. Node (onScroll :: I) p i
+tbody :: forall i. Node (onScroll :: I) i
 tbody = element (ElemName "tbody")
 
-tbody_ :: forall p i. Array (HTML p i) -> HTML p i
+tbody_ :: forall i. Array (HTML i) -> HTML i
 tbody_ = tbody []
 
-td :: forall p i. Node (colSpan :: I, headers :: I, rowSpan :: I) p i
+td :: forall i. Node (colSpan :: I, headers :: I, rowSpan :: I) i
 td = element (ElemName "td")
 
-td_ :: forall p i. Array (HTML p i) -> HTML p i
+td_ :: forall i. Array (HTML i) -> HTML i
 td_ = td []
 
-textarea :: forall p i. Leaf (autofocus :: I, cols :: I, disabled :: I, form :: I, maxlength :: I, onChange :: I, onInput :: I, onScroll :: I, onSelect :: I, placeholder :: I, readonly :: I, required :: I, rows :: I, value :: I, wrap :: I, name :: I) p i
+textarea :: forall i. Leaf (autofocus :: I, cols :: I, disabled :: I, form :: I, maxlength :: I, onChange :: I, onInput :: I, onScroll :: I, onSelect :: I, placeholder :: I, readonly :: I, required :: I, rows :: I, value :: I, wrap :: I, name :: I) i
 textarea es = element (ElemName "textarea") es []
 
-tfoot :: forall p i. Node (onScroll :: I) p i
+tfoot :: forall i. Node (onScroll :: I) i
 tfoot = element (ElemName "tfoot")
 
-tfoot_ :: forall p i. Array (HTML p i) -> HTML p i
+tfoot_ :: forall i. Array (HTML i) -> HTML i
 tfoot_ = tfoot []
 
-th :: forall p i. Node (abbr :: I, colSpan :: I, headers :: I, rowSpan :: I, scope :: I, sorted :: I) p i
+th :: forall i. Node (abbr :: I, colSpan :: I, headers :: I, rowSpan :: I, scope :: I, sorted :: I) i
 th = element (ElemName "th")
 
-th_ :: forall p i. Array (HTML p i) -> HTML p i
+th_ :: forall i. Array (HTML i) -> HTML i
 th_ = th []
 
-thead :: forall p i. Node () p i
+thead :: forall i. Node () i
 thead = element (ElemName "thead")
 
-thead_ :: forall p i. Array (HTML p i) -> HTML p i
+thead_ :: forall i. Array (HTML i) -> HTML i
 thead_ = thead []
 
-time :: forall p i. Node (datetime :: I) p i
+time :: forall i. Node (datetime :: I) i
 time = element (ElemName "time")
 
-time_ :: forall p i. Array (HTML p i) -> HTML p i
+time_ :: forall i. Array (HTML i) -> HTML i
 time_ = time []
 
-title :: forall p i. NoninteractiveNode () p i
+title :: forall i. NoninteractiveNode () i
 title = element (ElemName "title")
 
-title_ :: forall p i. Array (HTML p i) -> HTML p i
+title_ :: forall i. Array (HTML i) -> HTML i
 title_ = title []
 
-tr :: forall p i. Node () p i
+tr :: forall i. Node () i
 tr = element (ElemName "tr")
 
-tr_ :: forall p i. Array (HTML p i) -> HTML p i
+tr_ :: forall i. Array (HTML i) -> HTML i
 tr_ = tr []
 
-track :: forall p i. Leaf (default :: I, kind :: I, label :: I, src :: I, srclang :: I) p i
+track :: forall i. Leaf (default :: I, kind :: I, label :: I, src :: I, srclang :: I) i
 track props = element (ElemName "track") props []
 
-u :: forall p i. Node () p i
+u :: forall i. Node () i
 u = element (ElemName "u")
 
-u_ :: forall p i. Array (HTML p i) -> HTML p i
+u_ :: forall i. Array (HTML i) -> HTML i
 u_ = u []
 
-ul :: forall p i. Node (onScroll :: I) p i
+ul :: forall i. Node (onScroll :: I) i
 ul = element (ElemName "ul")
 
-ul_ :: forall p i. Array (HTML p i) -> HTML p i
+ul_ :: forall i. Array (HTML i) -> HTML i
 ul_ = ul []
 
-var :: forall p i. Node () p i
+var :: forall i. Node () i
 var = element (ElemName "var")
 
-var_ :: forall p i. Array (HTML p i) -> HTML p i
+var_ :: forall i. Array (HTML i) -> HTML i
 var_ = var []
 
-video :: forall p i. Node (autoplay :: I, controls :: I, height :: I, loop :: I, muted :: I, poster :: I, preload :: I, src :: I, width :: I) p i
+video :: forall i. Node (autoplay :: I, controls :: I, height :: I, loop :: I, muted :: I, poster :: I, preload :: I, src :: I, width :: I) i
 video = element (ElemName "video")
 
-video_ :: forall p i. Array (HTML p i) -> HTML p i
+video_ :: forall i. Array (HTML i) -> HTML i
 video_ = video []
 
-wbr :: forall p i. Leaf () p i
+wbr :: forall i. Leaf () i
 wbr props = element (ElemName "wbr") props []

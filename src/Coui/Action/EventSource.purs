@@ -1,5 +1,5 @@
 module Coui.Action.EventSource
-  ( SubscribeStatus(..)
+  ( Source(..)
   , EventSource(..)
   , unEventSource
   , hoist
@@ -50,12 +50,12 @@ unEventSource (EventSource es) = es
 
 -- | Change the input
 changeInput :: forall m i i'. Functor m => (i -> i') -> EventSource m i -> EventSource m i'
-changeInput projector (EventSource es) =
+changeInput projector (EventSource es) = EventSource $
   map
-    (\rc -> { producer: FT.interpret (lmap projector) rc.producer, done: rc.done })
+    (\rc -> { producer: FT.interpret (lmap (map projector)) rc.producer, done: rc.done })
   es
 
-hoist :: forall f m i. Functor n => (m ~> n) -> EventSource m i -> EventSource n i
+hoist :: forall m n i. Functor n => (m ~> n) -> EventSource m i -> EventSource n i
 hoist nat (EventSource es) =
   EventSource $
     map
@@ -112,7 +112,7 @@ eventSource_ attach query =
 -- | Similar to `eventSource_` but allows the attachment function to return an
 -- | action to perform when the handler is detached.
 eventSource_'
-  :: forall mi eff
+  :: forall m i eff
    . MonadAff (avar :: AVAR | eff) m
   => (Eff (avar :: AVAR | eff) Unit -> Eff (avar :: AVAR | eff) (Eff (avar :: AVAR | eff) Unit))
   -> Source i

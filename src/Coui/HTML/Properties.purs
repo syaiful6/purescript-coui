@@ -91,7 +91,7 @@ import DOM.Node.Types (Element)
 
 import Coui.HTML.Core (class IsProp, ClassName, AttrName(..), PropName(..), Prop)
 import Coui.HTML.Core as Core
-import Coui.Query.InputF (InputF(..), RefLabel)
+import Coui.Action.InputF (InputF(..), RefLabel)
 
 import Unsafe.Coerce (unsafeCoerce)
 

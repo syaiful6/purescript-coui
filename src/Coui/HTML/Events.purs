@@ -67,7 +67,7 @@ import Unsafe.Coerce (unsafeCoerce)
 input :: forall i o. (i -> o) -> i -> Maybe o
 input f x = Just $ f x
 
-input_ :: forall i o. o -> a -> Maybe o
+input_ :: forall i o. o -> i -> Maybe o
 input_ o _ = Just $ o
 
 handler :: forall r i. EventType -> (Event -> Maybe i) -> IProp r i
