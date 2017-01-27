@@ -1,4 +1,4 @@
-module Coui.VDom.Driver where
+module Coui.Driver.VDom where
 
 import Prelude
 
@@ -55,6 +55,12 @@ mkSpec handler document =
       :: DOM.Element
       -> V.VDomMachine (CoreEffects eff) (Array (VP.Prop (InputF Unit f))) Unit
     buildAttributes = VP.buildProp handler
+
+-- render
+--   :: forall f eff
+--    . (forall x. InputF x (f x) -> Eff (CoreEffects eff) Unit)
+--   -> Maybe (RenderState f eff)
+--   -> Eff (CoreEffects eff) (RenderState f eff)
 
 substInParent :: forall eff. DOM.Node -> DOM.Node -> Eff (dom :: DOM | eff) Unit
 substInParent oldNode newNode = do

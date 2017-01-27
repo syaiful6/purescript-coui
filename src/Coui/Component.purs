@@ -1,14 +1,12 @@
-module ComonadUI.Component where
+module Coui.Component where
 
 import Prelude
 
-import Data.Functor.Day (Day, day, runDay)
 import Data.Functor.Pairing (Pairing, sym)
-import Data.Functor.Pairing.Co (Co, pairCo, runCo, co)
+import Data.Functor.Pairing.Co (Co, pairCo)
 
 import Coui.HTML.Core (HTML)
 import Coui.Action.CoM (CoM)
-import Coui.Action.CoM as CM
 
 
 -- | a component
@@ -26,3 +24,19 @@ newtype Component h w g f i o m = Component
 type ComponentDSL = CoM
 
 type ComponentHTML f = HTML Void (f Unit)
+
+component
+  :: forall h w g f i o m
+   . (f ~> ComponentDSL g f o m)
+  -> Pairing g w
+  -> (i -> w (h Void (f Unit)))
+  -> Component h w g f i o m
+component action pair ui = Component { action, pair, ui }
+
+simpleComponent
+  :: forall h w f i o m
+   . Functor w
+  => (f ~> ComponentDSL (Co w) f o m)
+  -> (i -> w (h Void (f Unit)))
+  -> Component h w (Co w) f i o m
+simpleComponent action ui = Component { action, ui, pair: sym pairCo }
