@@ -57,6 +57,7 @@ import DOM.Event.Types (Event, EventType(..), FocusEvent, KeyboardEvent, MouseEv
 import DOM.Event.Event as EE
 import DOM.HTML.Event.Types (DragEvent)
 
+import Coui.Action (Action, action)
 import Coui.Action.InputF (InputF(..))
 import Coui.HTML.Core (Prop)
 import Coui.HTML.Core as Core
@@ -64,11 +65,11 @@ import Coui.HTML.Properties (I, IProp)
 
 import Unsafe.Coerce (unsafeCoerce)
 
-input :: forall i o. (i -> o) -> i -> Maybe o
-input f x = Just $ f x
+input :: forall f a. (a -> Action f) -> a -> Maybe (f Unit)
+input f x = Just $ action (f x)
 
-input_ :: forall i o. o -> i -> Maybe o
-input_ o _ = Just $ o
+input_ :: forall f a. Action f -> a -> Maybe (f Unit)
+input_ f _ = Just $ action f
 
 handler :: forall r i. EventType -> (Event -> Maybe i) -> IProp r i
 handler et = (unsafeCoerce :: (EventType -> (Event -> Maybe i) -> Prop i) -> EventType -> (Event -> Maybe (InputF Unit i)) -> IProp r i) Core.handler et <<< map (map Query)

@@ -1,4 +1,4 @@
-module Coui.Aff.Effects where
+module Coui.Effects where
 
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff.Exception (EXCEPTION)

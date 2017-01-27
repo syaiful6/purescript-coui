@@ -1,9 +1,9 @@
 module Coui.Action.EventSource
-  ( Source(..)
-  , EventSource(..)
+  ( EventSource(..)
+  , SubscribeStatus(..)
   , unEventSource
+  , interpret
   , hoist
-  , changeInput
   , eventSource
   , eventSource'
   , eventSource_
@@ -34,44 +34,44 @@ import Data.Either (Either(..))
 import Data.Foldable (for_)
 import Data.Maybe (Maybe)
 
+newtype EventSource f m = EventSource (m { producer :: CR.Producer (f SubscribeStatus) m Unit, done :: m Unit })
 
-data Source i = More i | Done
+unEventSource :: forall f m. EventSource f m -> m { producer :: CR.Producer (f SubscribeStatus) m Unit, done :: m Unit }
+unEventSource (EventSource e) = e
 
-derive instance functorSource :: Functor Source
+interpret :: forall f g m. Functor m => (f ~> g) -> EventSource f m -> EventSource g m
+interpret nat (EventSource es) =
+  EventSource $
+    map
+      (\e -> { producer: FT.interpret (lmap nat) e.producer, done: e.done })
+      es
 
-newtype EventSource m i =
-  EventSource (m { producer :: CR.Producer (Source i) m Unit, done :: m Unit })
-
-unEventSource
-  :: forall m i
-   . EventSource m i
-  -> m { producer :: CR.Producer (Source i) m Unit, done :: m Unit }
-unEventSource (EventSource es) = es
-
--- | Change the input
-changeInput :: forall m i i'. Functor m => (i -> i') -> EventSource m i -> EventSource m i'
-changeInput projector (EventSource es) = EventSource $
-  map
-    (\rc -> { producer: FT.interpret (lmap (map projector)) rc.producer, done: rc.done })
-  es
-
-hoist :: forall m n i. Functor n => (m ~> n) -> EventSource m i -> EventSource n i
+hoist :: forall f m n. Functor n => (m ~> n) -> EventSource f m -> EventSource f n
 hoist nat (EventSource es) =
   EventSource $
     map
       (\e -> { producer: FT.hoistFreeT nat e.producer, done: nat e.done })
       (nat es)
 
+-- | The status of an `EventSource` subscription. When a query raised by an
+-- | `EventSource` evaluates to `Done` the producer will be unsubscribed from.
+data SubscribeStatus
+  = Listening
+  | Done
+
+derive instance eqSubscribeStatus :: Eq SubscribeStatus
+derive instance ordSubscribeStatus :: Ord SubscribeStatus
+
 -- | Creates an `EventSource` for a callback that accepts one argument.
 -- |
 -- | - The first argument is the function that attaches the listener.
 -- | - The second argument is a handler that optionally produces a value in `f`.
 eventSource
-  :: forall m i a eff
+  :: forall f m a eff
    . MonadAff (avar :: AVAR | eff) m
   => ((a -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) Unit)
-  -> (a -> Maybe (Source i))
-  -> EventSource m i
+  -> (a -> Maybe (f SubscribeStatus))
+  -> EventSource f m
 eventSource attach handler =
   EventSource
     let producer = produce \emit -> attach (emit <<< Left <<< handler)
@@ -80,11 +80,11 @@ eventSource attach handler =
 -- | Similar to `eventSource` but allows the attachment function to return an
 -- | action to perform when the handler is detached.
 eventSource'
-  :: forall m i a eff
+  :: forall f m a eff
    . MonadAff (avar :: AVAR | eff) m
   => ((a -> Eff (avar :: AVAR | eff) Unit) -> Eff (avar :: AVAR | eff) (Eff (avar :: AVAR | eff) Unit))
-  -> (a -> Maybe (Source i))
-  -> EventSource m i
+  -> (a -> Maybe (f SubscribeStatus))
+  -> EventSource f m
 eventSource' attach handler = do
   EventSource do
     { producer, cancel } <- liftAff $ produce' \emit -> attach (emit <<< Left <<< handler)
@@ -99,11 +99,11 @@ eventSource' attach handler = do
 -- | - The second argument is the query to raise whenever the listener is
 -- |   triggered.
 eventSource_
-  :: forall m i eff
+  :: forall f m eff
    . MonadAff (avar :: AVAR | eff) m
   => (Eff (avar :: AVAR | eff) Unit -> Eff (avar :: AVAR | eff) Unit)
-  -> Source i
-  -> EventSource m i
+  -> f SubscribeStatus
+  -> EventSource f m
 eventSource_ attach query =
   EventSource
     let producer = produce \emit -> attach $ emit (Left query)
@@ -112,11 +112,11 @@ eventSource_ attach query =
 -- | Similar to `eventSource_` but allows the attachment function to return an
 -- | action to perform when the handler is detached.
 eventSource_'
-  :: forall m i eff
+  :: forall f m eff
    . MonadAff (avar :: AVAR | eff) m
   => (Eff (avar :: AVAR | eff) Unit -> Eff (avar :: AVAR | eff) (Eff (avar :: AVAR | eff) Unit))
-  -> Source i
-  -> EventSource m i
+  -> f SubscribeStatus
+  -> EventSource f m
 eventSource_' attach query =
   EventSource do
     { producer, cancel } <- liftAff $ produce' \emit -> attach $ emit (Left query)

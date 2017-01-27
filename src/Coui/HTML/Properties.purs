@@ -1,6 +1,3 @@
--- | A closed signature of type-indexed (refined) HTML properties; these can be
--- | used to ensure correctness by construction, and then erased into the
--- | standard unrefined versions.
 module Coui.HTML.Properties
   ( IProp(..)
   , I
