@@ -37,7 +37,7 @@ import Halogen.VDom.DOM.Prop (Prop(..), PropValue) as Exports
 
 import Coui.Action.InputF (InputF)
 
-newtype HTML p i = HTML (VDom.VDom (Array (Prop (InputF Unit i))) p)
+newtype HTML p i = HTML (VDom.VDom (Array (Prop (InputF i))) p)
 
 derive instance newtypeHTML :: Newtype (HTML p i) _
 

@@ -1,11 +1,10 @@
-module Coui.Driver.Aff.Eval where
+module Coui.Aff.Driver.Eval where
 
 import Prelude
 
 import Control.Applicative.Free (hoistFreeAp, retractFreeAp)
 import Control.Comonad (class Comonad, duplicate)
-import Control.Coroutine as CR
-import Control.Monad.Aff (Aff, forkAff, forkAll)
+import Control.Monad.Aff (Aff, forkAll)
 import Control.Monad.Aff.Unsafe (unsafeCoerceAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
@@ -14,7 +13,6 @@ import Control.Monad.Eff.Ref (Ref, readRef, modifyRef, writeRef)
 import Control.Monad.Error.Class (throwError)
 import Control.Monad.Fork (fork)
 import Control.Monad.Free (foldFree)
-import Control.Monad.Trans.Class (lift)
 import Control.Parallel (parallel, sequential)
 
 import Data.List (List, (:))
@@ -23,13 +21,12 @@ import Data.Maybe (Maybe(..))
 import Data.StrMap as SM
 import Data.Traversable (sequence_)
 
-import Coui.Action.EventSource as ES
 import Coui.Action.ForkF as FF
 import Coui.Action.CoM (CoM(..), CoF(..), CoAp(..))
+import Coui.Action.CoT (pairCoTM_)
 import Coui.Action.InputF (InputF(..), RefLabel(..))
-import Coui.Component (Component(..))
-import Coui.Driver.Aff.State (DriverState(..))
-import Coui.Effects (CoreEffects)
+import Coui.Aff.Driver.State (DriverState(..))
+import Coui.Aff.Effects (CoreEffects)
 
 
 type LifecycleHandlers eff =
@@ -50,52 +47,43 @@ handleLifecycle lchs f = do
   sequence_ initializers
   pure result
 
-type Renderer h r w g f i o eff
-  = Ref (DriverState h r w g f i o eff)
+type Renderer h r w f i o eff
+  = Ref (DriverState h r w f i o eff)
   -> Eff (CoreEffects eff) Unit
 
 eval
-  :: forall h r w g f i o a eff
+  :: forall h r w f i o eff
    . Comonad w
   => Ref (LifecycleHandlers eff)
-  -> Renderer h r w g f i o eff
-  -> Ref (DriverState h r w g f i o eff)
-  -> InputF a (f a)
-  -> Aff (CoreEffects eff) a
+  -> Renderer h r w f i o eff
+  -> Ref (DriverState h r w f i o eff)
+  -> InputF f
+  -> Aff (CoreEffects eff) Unit
 eval lchs render r = case _ of
-  RefUpdate (RefLabel p) el next -> do
+  RefUpdate (RefLabel p) el -> do
     liftEff $ modifyRef r \(DriverState st) ->
       DriverState st { refs = SM.alter (const el) p st.refs }
-    pure next
-  Query q -> evalF r q
+    pure unit
+  Action q -> do
+    -- move to new space
+    DriverState st <- liftEff (readRef r)
+    case pairCoTM_ (const pure) (st.component.action q) (duplicate st.state) of
+      CoM fx -> do
+        newstate <- foldFree (go r) fx
+        liftEff $ modifyRef r \(DriverState st) ->
+          DriverState st { state = newstate }
+        handleLifecycle lchs (render r)
+        pure unit
 
   where
 
   go
-    :: Ref (DriverState h r w g f i o eff)
-    -> CoF g f o (Aff (CoreEffects eff))
+    :: Ref (DriverState h r w f i o eff)
+    -> CoF f o (Aff (CoreEffects eff))
     ~> Aff (CoreEffects eff)
   go ref = case _ of
-    Explore gx a -> do
-      DriverState (st@{ state, component }) <- liftEff (readRef ref)
-      case component of
-        Component spec -> do
-          let state' = spec.pair (const id) gx (duplicate state)
-          liftEff $ writeRef ref (DriverState (st { state = state' }))
-          handleLifecycle lchs (render ref)
-          pure a
     Lift mx ->
       mx
-    Subscribe es next -> do
-      forkAff do
-        { producer, done } <- ES.unEventSource es
-        let
-          consumer = do
-            s <- lift <<< evalF ref =<< CR.await
-            when (s == ES.Listening) consumer
-        CR.runProcess (consumer `CR.pullFrom` producer)
-        done
-      pure next
     Halt msg ->
       throwError (error msg)
     Raise o a -> do
@@ -111,17 +99,9 @@ eval lchs render r = case _ of
       DriverState { refs } <- liftEff (readRef ref)
       pure $ k $ SM.lookup p refs
 
-  evalF
-    :: Ref (DriverState h r w g f i o eff)
-    -> f
-    ~> Aff (CoreEffects eff)
-  evalF ref q = do
-    DriverState { component } <- liftEff (readRef ref)
-    case component of Component spec -> case spec.action q of CoM fx -> foldFree (go ref) fx
-
   evalM
-    :: Ref (DriverState h r w g f i o eff)
-    -> CoM g f o (Aff (CoreEffects eff))
+    :: Ref (DriverState h r w f i o eff)
+    -> CoM f o (Aff (CoreEffects eff))
     ~> Aff (CoreEffects eff)
   evalM ref (CoM q) = foldFree (go ref) q
 

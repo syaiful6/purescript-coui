@@ -3,7 +3,7 @@
   "files": [],
   "scripts": {
     "clean": "rimraf output && rimraf .pulp-cache",
-    "example-cofree": "bower link && cd examples/cofree && bower link purescript-coui && bower install && npm run build"
+    "example-counter": "bower link && cd examples/counter && bower link purescript-coui && bower install && npm run build"
   },
   "dependencies": {
     "react": "^0.14.8",
