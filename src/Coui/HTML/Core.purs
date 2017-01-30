@@ -35,14 +35,12 @@ import Halogen.VDom.DOM.Prop (ElemRef(..), Prop(..), PropValue, propFromBoolean,
 import Halogen.VDom (ElemName(..), Namespace(..)) as Exports
 import Halogen.VDom.DOM.Prop (Prop(..), PropValue) as Exports
 
-import Coui.Action.InputF (InputF)
-
-newtype HTML p i = HTML (VDom.VDom (Array (Prop (InputF i))) p)
+newtype HTML p i = HTML (VDom.VDom (Array (Prop i)) p)
 
 derive instance newtypeHTML :: Newtype (HTML p i) _
 
 instance bifunctorHTML :: Bifunctor HTML where
-  bimap f g (HTML vdom) = HTML (bimap (map (map (map g))) f vdom)
+  bimap f g (HTML vdom) = HTML (bimap (map (map g)) f vdom)
 
 instance functorHTML :: Functor (HTML p) where
   map = rmap

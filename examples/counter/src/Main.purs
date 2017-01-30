@@ -12,4 +12,4 @@ import Counter.Counter (counterTraced)
 main :: forall eff. Eff (CoreEffects eff) Unit
 main = runCouiAff do
   body <- awaitBody
-  runUI counterTraced 5 body
+  runUI counterTraced body

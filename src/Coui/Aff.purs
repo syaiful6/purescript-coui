@@ -4,6 +4,6 @@ module Coui.Aff
   , module Coui.Aff.Util
   ) where
 
-import Coui.Aff.Driver (CouiIO)
+import Coui.Aff.Driver (Driver)
 import Coui.Aff.Effects (CoreEffects)
 import Coui.Aff.Util (awaitBody, awaitLoad, runCouiAff, selectElement)

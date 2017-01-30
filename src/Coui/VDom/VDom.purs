@@ -27,15 +27,14 @@ import Halogen.VDom.Machine (Step, extract, never, step) as V
 import Halogen.VDom.DOM.Prop as VP
 import Halogen.VDom.Util (refEq)
 
-import Coui.Action.InputF (InputF)
-import Coui.Aff.Driver (CoreEffects, CouiIO)
+import Coui.Aff.Driver (CoreEffects, Driver)
 import Coui.Aff.Driver as AD
 import Coui.Component (Component)
 import Coui.HTML.Core (HTML(..))
 
-type VHTML f = V.VDom (Array (VP.Prop (InputF f))) Void
+type VHTML f = V.VDom (Array (VP.Prop f)) Void
 
-newtype RenderState f o eff =
+newtype RenderState f eff =
   RenderState
     { node :: DOM.Node
     , machine :: V.Step (Eff (CoreEffects eff)) (VHTML f) DOM.Node
@@ -43,11 +42,11 @@ newtype RenderState f o eff =
 
 mkSpec
   :: forall f eff
-   . (InputF f -> Eff (CoreEffects eff) Unit)
+   . (f -> Eff (CoreEffects eff) Unit)
   -> DOM.Document
   -> V.VDomSpec
       (CoreEffects eff)
-      (Array (VP.Prop (InputF f)))
+      (Array (VP.Prop f))
       Void
 mkSpec handler document =
   V.VDomSpec { buildWidget: const (V.never), buildAttributes, document }
@@ -55,29 +54,28 @@ mkSpec handler document =
   where
     buildAttributes
       :: DOM.Element
-      -> V.VDomMachine (CoreEffects eff) (Array (VP.Prop (InputF f))) Unit
+      -> V.VDomMachine (CoreEffects eff) (Array (VP.Prop f)) Unit
     buildAttributes = VP.buildProp handler
 
 runUI
-  :: forall w f i o eff. Comonad w
-  => Component HTML w f i o (Aff (CoreEffects eff))
-  -> i
+  :: forall w f eff. Comonad w
+  => Component w (Aff (CoreEffects eff)) HTML f
   -> DOM.HTMLElement
-  -> Aff (CoreEffects eff) (CouiIO f o (Aff (CoreEffects eff)))
-runUI component i element = do
+  -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
+runUI component element = do
   document <- liftEff $ DOM.htmlDocumentToDocument <$> (DOM.document =<< DOM.window)
-  AD.runUI (renderSpec document element) component i
+  AD.runUI (renderSpec document element) component
 
 renderSpec :: forall eff. DOM.Document -> DOM.HTMLElement -> AD.RenderSpec HTML RenderState eff
 renderSpec document element = { render }
   where
 
   render
-    :: forall f o
-     . (InputF f -> Eff (CoreEffects eff) Unit)
+    :: forall f
+     . (f -> Eff (CoreEffects eff) Unit)
     -> HTML Void f
-    -> Maybe (RenderState f o eff)
-    -> Eff (CoreEffects eff) (RenderState f o eff)
+    -> Maybe (RenderState f eff)
+    -> Eff (CoreEffects eff) (RenderState f eff)
   render handler (HTML vdom) = case _ of
     Nothing -> do
       let spec = mkSpec handler document

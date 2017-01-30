@@ -2,8 +2,7 @@ module Counter.Counter where
 
 import Prelude
 
-import Control.Comonad (extend)
-import Control.Comonad.Traced (Traced, traced, track)
+import Control.Comonad.Traced (Traced, traced)
 import Control.Monad.Writer (tell)
 import Data.Monoid.Additive (Additive(..))
 
@@ -17,15 +16,11 @@ data Action = Increment | Decrement
 data Message = Incremented Boolean
 
 type State = Int
-
+-- | Use Traced Comonad
 type Incremental = Traced (Additive State)
 
-counterTraced :: forall m. W.Component HH.HTML Incremental Action State Message m
-counterTraced = W.component performAction build
-
--- | Build Incremental with specified initial state
-build :: State -> Incremental (W.ComponentHTML Action)
-build s = extend (\x -> track (Additive (s)) x) (traced ui)
+counterTraced :: forall m. W.Component Incremental m HH.HTML Action
+counterTraced = W.component performAction (traced ui)
 
 ui :: Additive State -> W.ComponentHTML Action
 ui (Additive s) =
@@ -46,10 +41,9 @@ ui (Additive s) =
         ]
     ]
 
-performAction :: forall m. Action -> W.ComponentDSL Incremental Action Message m
+performAction :: forall m. Action -> W.ComponentDSL Incremental m
 performAction Increment = do
   tell (Additive 1)
-  W.lift (W.raise (Incremented true))
 performAction Decrement = do
   tell (Additive (-1))
   pure unit

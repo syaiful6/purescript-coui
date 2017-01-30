@@ -3,7 +3,6 @@ module Coui.HTML.Properties
   , I
   , prop
   , attr
-  , ref
 
   , ButtonType(..)
   , InputType(..)
@@ -88,13 +87,11 @@ import DOM.Node.Types (Element)
 
 import Coui.HTML.Core (class IsProp, ClassName, AttrName(..), PropName(..), Prop)
 import Coui.HTML.Core as Core
-import Coui.Action.InputF (InputF(..), RefLabel)
-
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | The phantom row `r` can be thought of as a context which is synthesized in
 -- | the course of constructing a refined HTML expression.
-newtype IProp (r :: # *) i = IProp (Prop (InputF i))
+newtype IProp (r :: # *) i = IProp (Prop i)
 
 derive instance newtypeIProp :: Newtype (IProp r i) _
 
@@ -109,20 +106,11 @@ prop
   -> Maybe AttrName
   -> value
   -> IProp r i
-prop = (unsafeCoerce :: (PropName value -> Maybe AttrName -> value -> Prop (InputF i)) -> PropName value -> Maybe AttrName -> value -> IProp r i) Core.prop
+prop = (unsafeCoerce :: (PropName value -> Maybe AttrName -> value -> Prop i) -> PropName value -> Maybe AttrName -> value -> IProp r i) Core.prop
 
 -- | Creates an indexed HTML attribute.
 attr :: forall r i. AttrName -> String -> IProp r i
-attr = (unsafeCoerce :: (AttrName -> String -> Prop (InputF i)) -> AttrName -> String -> IProp r i) Core.attr
-
--- | The `ref` property allows an input to be raised once a `HTMLElement` has
--- | been created or destroyed in the DOM for the element that the property is
--- | attached to.
-ref :: forall r i. RefLabel -> IProp r i
-ref = (unsafeCoerce :: ((Maybe Element -> Maybe (InputF i)) -> Prop (InputF i)) -> (Maybe Element -> Maybe (InputF i)) -> IProp r i) Core.ref <<< go
-  where
-  go :: RefLabel -> Maybe Element -> Maybe (InputF i)
-  go p mel = Just $ RefUpdate p (toForeign <$> mel)
+attr = (unsafeCoerce :: (AttrName -> String -> Prop i) -> AttrName -> String -> IProp r i) Core.attr
 
 alt :: forall r i. String -> IProp (alt :: I | r) i
 alt = prop (PropName "alt") (Just $ AttrName "alt")
