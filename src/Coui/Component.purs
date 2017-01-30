@@ -11,12 +11,12 @@ import Coui.Action.CoT (CoT)
 -- | `h` is type that will be rendered by Component
 -- | `f` is the action supported by this Component
 type Component' w m h f =
-  { ui     :: w (h Void f)
+  { ui     :: w (h f)
   , action :: f -> CoT w m Unit
   }
 
 newtype Component w m h f = Component
-  { ui :: w (h Void f)
+  { ui :: w (h f)
   , action :: f -> CoT w m Unit
   }
 
@@ -25,11 +25,11 @@ unComponent (Component v) = v
 
 type ComponentDSL w m = CoT w m Unit
 
-type ComponentHTML f = HTML Void f
+type ComponentHTML = (HTML Void)
 
 component
   :: forall w m h f
    . (f -> ComponentDSL w m)
-  -> (w (h Void f))
+  -> (w (h f))
   -> Component w m h f
 component action ui = Component { action, ui }

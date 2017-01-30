@@ -7,12 +7,14 @@ module Coui
   , module Coui.Action
   ) where
 
+import Data.Void (Void)
+
 import Coui.Aff (Driver)
 import Coui.Component (Component, ComponentDSL, ComponentHTML, component)
 import Coui.HTML.Core (AttrName(..), ClassName(..), Namespace(..), PropName(..), ElemName(..))
 import Coui.HTML.Core as C
 import Coui.Action (get, gets, lift, liftAff, liftEff, modify, put)
 
-type HTML p i = C.HTML p i
+type HTML = (C.HTML Void)
 
-type Prop i = C.Prop i
+type Prop = C.Prop

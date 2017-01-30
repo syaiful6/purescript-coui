@@ -33,7 +33,7 @@ type RenderSpec h r eff =
   { render
       :: forall f
        . (f -> Eff (CoreEffects eff) Unit)
-      -> h Void f
+      -> h f
       -> Maybe (r f eff)
       -> Eff (CoreEffects eff) (r f eff)
   }
@@ -162,7 +162,7 @@ newtype DriverState h r w f eff = DriverState (DriverStateR h r w f eff)
 
 type DriverStateR h r w f eff =
   { component :: Component' w (Aff (CoreEffects eff)) h f
-  , state :: w (h Void f)
+  , state :: w (h f)
   , selfRef :: Ref (DriverState h r w f eff)
   , pendingRefs :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
   , pendingQueries :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))

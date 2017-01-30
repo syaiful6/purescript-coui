@@ -19,7 +19,7 @@ type State = Int
 -- | Use Traced Comonad
 type Incremental = Traced (Additive State)
 
-counterTraced :: forall m. W.Component Incremental m HH.HTML Action
+counterTraced :: forall m. W.Component Incremental m W.ComponentHTML Action
 counterTraced = W.component performAction (traced ui)
 
 ui :: Additive State -> W.ComponentHTML Action

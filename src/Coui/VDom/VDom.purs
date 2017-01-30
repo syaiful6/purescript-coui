@@ -59,21 +59,21 @@ mkSpec handler document =
 
 runUI
   :: forall w f eff. Comonad w
-  => Component w (Aff (CoreEffects eff)) HTML f
+  => Component w (Aff (CoreEffects eff)) (HTML Void) f
   -> DOM.HTMLElement
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
 runUI component element = do
   document <- liftEff $ DOM.htmlDocumentToDocument <$> (DOM.document =<< DOM.window)
   AD.runUI (renderSpec document element) component
 
-renderSpec :: forall eff. DOM.Document -> DOM.HTMLElement -> AD.RenderSpec HTML RenderState eff
+renderSpec :: forall eff. DOM.Document -> DOM.HTMLElement -> AD.RenderSpec (HTML Void) RenderState eff
 renderSpec document element = { render }
   where
 
   render
     :: forall f
      . (f -> Eff (CoreEffects eff) Unit)
-    -> HTML Void f
+    -> (HTML Void) f
     -> Maybe (RenderState f eff)
     -> Eff (CoreEffects eff) (RenderState f eff)
   render handler (HTML vdom) = case _ of
