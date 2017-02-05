@@ -11,11 +11,13 @@ import Control.Monad.Rec.Class (forever)
 import Data.Either (either, Either(..))
 import Data.Foldable (for_)
 import Data.List (List(..), (!!), modifyAt)
-import Data.Lens (Prism', Lens', review, matching, lens, view)
+import Data.Lens (Traversal, Prism', Lens', review, matching, lens, view)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Monoid (class Monoid, mempty)
+import Data.Newtype (unwrap)
 import Data.Profunctor (class Profunctor, dimap)
 import Data.Profunctor.Choice (class Choice)
+import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
 import Data.Tuple (Tuple(..), fst, snd)
 
@@ -52,8 +54,7 @@ instance choiceComponent :: Choice (Component eff h f) where
         Left s' -> FT.interpret transform' (action s' f)
       transform'
         :: forall s t c
-         . CoTransform (Maybe s) (s -> t)
-        ~> CoTransform (Maybe (Either s c)) (Either s c -> Either t c)
+         . CoTransform (Maybe s) (s -> t) ~> CoTransform (Maybe (Either s c)) (Either s c -> Either t c)
       transform' (CoTransform o k) =
         CoTransform (either (Left <<< o) Right) (k <<< join <<< map (either Just (const Nothing)))
   right (Component render action) = Component render' action'
@@ -64,8 +65,7 @@ instance choiceComponent :: Choice (Component eff h f) where
         Right s' -> FT.interpret transform' (action s' f)
       transform'
         :: forall s t c
-         . CoTransform (Maybe s) (s -> t)
-        ~> CoTransform (Maybe (Either c s)) (Either c s -> Either c t)
+         . CoTransform (Maybe s) (s -> t) ~> CoTransform (Maybe (Either c s)) (Either c s -> Either c t)
       transform' (CoTransform o k) =
         CoTransform (either Left (Right <<< o)) (k <<< join <<< map (either (const Nothing) Just))
 
@@ -94,9 +94,7 @@ instance monoidComponent :: Monoid (Component eff h f s t) where
 
 perform
   :: forall a b c d
-   . (a -> b)
-  -> (c -> d)
-  -> CoTransform (Maybe b) (b -> c) ~> CoTransform (Maybe a) (a -> d)
+   . (a -> b) -> (c -> d) -> CoTransform (Maybe b) (b -> c) ~> CoTransform (Maybe a) (a -> d)
 perform f g (CoTransform o k) = CoTransform (g <<< o <<< f) (k <<< map f)
 
 type Component' eff h f s = Component eff h f s s
@@ -112,15 +110,12 @@ defaultRender _ = []
 
 component
   :: forall eff h f s
-   . Render h f s
-  -> Action eff f s s
-  -> Component' eff h f s
+   . Render h f s -> Action eff f s s -> Component' eff h f s
 component rd act = Component rd act
 
 withState
   :: forall eff h f s
-   . (s -> Component' eff h f s)
-  -> Component' eff h f s
+   . (s -> Component' eff h f s) -> Component' eff h f s
 withState f = component render action
   where
     render :: Render h f s
@@ -130,12 +125,8 @@ withState f = component render action
     action s g = view _action (f s) s g
 
 focus
-  :: forall eff h f g s t
-   . Functor h
-  => Lens' s t
-  -> Prism' g f
-  -> Component' eff h f t
-  -> Component' eff h g s
+  :: forall eff h f g s t. Functor h
+  => Lens' s t -> Prism' g f -> Component' eff h f t -> Component' eff h g s
 focus ls prism (Component render action) = ls $ component render' action'
   where
     render' :: Render h g t
@@ -152,25 +143,25 @@ focusState
 focusState ls = ls
 
 match
-  :: forall eff h f g s
-   . Functor h
-  => Prism' g f
-  -> Component' eff h f s
-  -> Component' eff h g s
+  :: forall eff h f g s. Functor h
+  => Prism' g f -> Component' eff h f s -> Component' eff h g s
 match prism = focus id prism
 
 split
   :: forall eff h f s t
-   . Prism' s t
-  -> Component' eff h f t
-  -> Component' eff h f s
+   . Prism' s t -> Component' eff h f t -> Component' eff h f s
 split p = p
 
+traversal
+  :: forall eff h f s t
+   . Traversal s s t t -> Component' eff h f t -> Component' eff h f s
+traversal t = withState <<< unwrap <<< t <<< Star <<< toStar
+  where
+    toStar com s = dimap (const s) id com
+
 foreach
-  :: forall eff h f s
-   . Functor h
-  => (Int -> Component' eff h f s)
-  -> Component' eff h (Tuple Int f) (List s)
+  :: forall eff h f s. Functor h
+  => (Int -> Component' eff h f s) -> Component' eff h (Tuple Int f) (List s)
 foreach f = component render action
   where
     render :: Render h (Tuple Int f) (List s)

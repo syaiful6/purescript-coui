@@ -9,7 +9,7 @@ import Data.Foldable (fold)
 import Data.Foreign (toForeign)
 import Data.Foreign.Class (readProp)
 import Data.Int (fromString)
-import Data.List (List, snoc, length, filter, deleteAt)
+import Data.List (List, (:), length, filter, deleteAt)
 import Data.Lens (Prism', Lens', lens, prism, over)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(Tuple), uncurry)
@@ -151,5 +151,5 @@ listActions = Co.component Co.defaultRender action
     action _ (SetEditText s) =
       void $ Co.modifyState (_ { editText = s })
     action _ (NewTask s) =
-      void $ Co.modifyState \st -> st { tasks = st.tasks `snoc` initialTask s, editText = "" }
+      void $ Co.modifyState \st -> st { tasks = initialTask s : st.tasks, editText = "" }
     action _ _ = pure unit

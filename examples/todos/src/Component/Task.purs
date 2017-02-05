@@ -41,7 +41,7 @@ task = Co.component render action
         ]
     ]
 
-  action :: forall eff. Co.Action' eff TaskAction Task
+  action :: Co.Action' eff TaskAction Task
   action _ (UpdateDescription desc) = void $ do
     Co.modifyState (_ { description = desc })
   action _ (ToggleCompleted b) = void $ do
