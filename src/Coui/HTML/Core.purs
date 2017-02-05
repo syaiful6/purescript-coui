@@ -13,6 +13,7 @@ module Coui.HTML.Core
   , PropName(..)
   , AttrName(..)
   , ClassName(..)
+  , className
   , module Exports
   ) where
 
@@ -124,6 +125,9 @@ derive instance genericAttrName :: Generic AttrName
 
 -- | A wrapper for strings which are used as CSS classes.
 newtype ClassName = ClassName String
+
+className :: String -> ClassName
+className = ClassName
 
 derive instance newtypeClassName :: Newtype ClassName _
 derive newtype instance eqClassName :: Eq ClassName

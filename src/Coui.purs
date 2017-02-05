@@ -7,14 +7,13 @@ module Coui
   , module Coui.Action
   ) where
 
-import Data.Void (Void)
-
 import Coui.Aff (Driver)
-import Coui.Component (Component, ComponentDSL, ComponentHTML, component)
-import Coui.HTML.Core (AttrName(..), ClassName(..), Namespace(..), PropName(..), ElemName(..))
+import Coui.Component (Component(..), Component', ComponentHTML, Render, Action, Action',
+  component, focus, focusState, match, split, foreach, withState, _render, _action, defaultRender)
+import Coui.HTML.Core (AttrName(..), ClassName(..), className, Namespace(..), PropName(..), ElemName(..))
 import Coui.HTML.Core as C
-import Coui.Action (get, gets, lift, liftAff, liftEff, modify, put)
+import Coui.Action (CoTransformer, defaultAction, writeState, modifyState, cotransform)
 
-type HTML = (C.HTML Void)
+type HTML = ComponentHTML
 
 type Prop = C.Prop

@@ -247,11 +247,11 @@ renderInputType = case _ of
   InputUrl -> "url"
   InputWeek -> "week"
 
-_type :: forall r i value. IsProp value => value -> IProp (r :: # *) i
-_type = prop (PropName "type") (Just $ AttrName "type")
+type_ :: forall r i value. IsProp value => value -> IProp (r :: # *) i
+type_ = prop (PropName "type") (Just $ AttrName "type")
 
 inputType :: forall r i. InputType -> IProp (inputType :: I | r) i
-inputType = _type <<< renderInputType
+inputType = type_ <<< renderInputType
 
 data MenuType
   = MenuList
@@ -265,7 +265,7 @@ renderMenuType = case _ of
   MenuToolbar -> "toolbar"
 
 menuType :: forall r i. MenuType -> IProp (menuType :: I | r) i
-menuType = _type <<< renderMenuType
+menuType = type_ <<< renderMenuType
 
 data MenuitemType
   = MenuitemCommand
@@ -279,10 +279,10 @@ renderMenuitemType = case _ of
   MenuitemRadio -> "radio"
 
 menuitemType :: forall r i. MenuitemType -> IProp (menuitemType :: I | r) i
-menuitemType= _type <<< renderMenuitemType
+menuitemType= type_ <<< renderMenuitemType
 
 mediaType :: forall r i. MediaType -> IProp (mediaType :: I | r) i
-mediaType = _type <<< unwrap
+mediaType = type_ <<< unwrap
 
 data ButtonType
   = ButtonButton
@@ -296,7 +296,7 @@ renderButtonType = case _ of
   ButtonReset -> "reset"
 
 buttonType :: forall r i. ButtonType -> IProp (buttonType :: I | r) i
-buttonType = _type <<< renderButtonType
+buttonType = type_ <<< renderButtonType
 
 data CaseType
   = Uppercase
@@ -319,7 +319,7 @@ renderOrderedListType = case _ of
   OrderedListAlphabetic Uppercase -> "A"
 
 olType :: forall r i. OrderedListType -> IProp (olType :: I | r) i
-olType = _type <<< renderOrderedListType
+olType = type_ <<< renderOrderedListType
 
 value :: forall r i. String -> IProp (value :: I | r) i
 value = prop (PropName "value") (Just $ AttrName "value")

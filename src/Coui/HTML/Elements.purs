@@ -117,7 +117,6 @@ module Coui.HTML.Elements
   , wbr
   ) where
 
-import Prelude (Unit)
 import Data.Tuple (Tuple)
 
 import Halogen.VDom as VDom

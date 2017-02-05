@@ -1,10 +1,23 @@
 module Coui.Action
   ( module Exports
+  , module Coui.Action
   ) where
 
 import Prelude
 
-import Control.Monad.Aff.Class (liftAff) as Exports
-import Control.Monad.Eff.Class (liftEff) as Exports
-import Control.Monad.State.Class (get, gets, modify, put) as Exports
-import Control.Monad.Trans.Class (lift) as Exports
+import Control.Monad.Aff (Aff)
+import Control.Coroutine (CoTransformer, cotransform)
+import Control.Coroutine (CoTransformer, cotransform) as Exports
+
+import Data.Maybe (Maybe)
+
+import Coui.Component (Action)
+
+defaultAction :: forall eff f s t. Action eff f s t
+defaultAction _ _ = pure unit
+
+writeState :: forall eff f s t. t -> CoTransformer (Maybe s) (s -> t) (Aff eff) (Maybe s)
+writeState t = cotransform (const t)
+
+modifyState :: forall eff f s t. (s -> t) -> CoTransformer (Maybe s) (s -> t) (Aff eff) (Maybe s)
+modifyState = cotransform

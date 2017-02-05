@@ -7,35 +7,36 @@ module Coui.Aff.Driver
 
 import Prelude
 
-import Control.Comonad (class Comonad, extract, duplicate)
 import Control.Monad.Aff (Aff, forkAll, runAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throwException)
 import Control.Monad.Eff.Ref (Ref, modifyRef, readRef, writeRef, newRef)
+import Control.Coroutine (CoTransformer, CoTransform(CoTransform))
+import Control.Monad.Free.Trans (resume)
+import Control.Monad.Rec.Class (Step(..), tailRecM)
 import Control.Parallel (parSequence_)
 
+import Data.Either (Either(..))
+import Data.Lens (view)
 import Data.List as L
 import Data.List ((:))
 import Data.Traversable (for_, sequence_)
 import Data.Maybe (Maybe(..))
 
-import Unsafe.Coerce (unsafeCoerce)
-
-import Coui.Action.CoT (pairCoTM_)
-import Coui.Component (Component(..), Component')
+import Coui.Component (Component', _render, _action)
 import Coui.Aff.Effects (CoreEffects)
 
 
 type Driver f m = f -> m Unit
 
-type RenderSpec h r eff =
+type RenderSpec h r s eff =
   { render
       :: forall f
        . (f -> Eff (CoreEffects eff) Unit)
-      -> h f
-      -> Maybe (r f eff)
-      -> Eff (CoreEffects eff) (r f eff)
+      -> Array (h f)
+      -> Maybe (r s f eff)
+      -> Eff (CoreEffects eff) (r s f eff)
   }
 
 type LifecycleHandlers eff =
@@ -44,69 +45,85 @@ type LifecycleHandlers eff =
   }
 
 runUI
-  :: forall h r w f eff. Comonad w
-  => RenderSpec h r eff
-  -> Component w (Aff (CoreEffects eff)) h f
+  :: forall h r s f eff
+   . RenderSpec h r s eff
+  -> Component' (CoreEffects eff) h f s
+  -> s
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
-runUI renderSpec component = do
+runUI renderSpec component s = do
   lchs <- liftEff $ newRef { initializers: L.Nil, finalizers: L.Nil }
-  runUI' lchs renderSpec component
+  runUI' lchs renderSpec component s
 
 runUI'
-  :: forall h r w f eff. Comonad w
-  => Ref (LifecycleHandlers eff)
-  -> RenderSpec h r eff
-  -> Component w (Aff (CoreEffects eff)) h f
+  :: forall h r s f eff
+   . Ref (LifecycleHandlers eff)
+  -> RenderSpec h r s eff
+  -> Component' (CoreEffects eff) h f s
+  -> s
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
-runUI' lchs renderSpec component = do
+runUI' lchs renderSpec component s = do
   fresh <- liftEff $ newRef 0
   handleLifecycle lchs do
-    runComponent component
-      >>= readRef
-      >>= unDriverState >>> \st ->
-        pure (handleAction st.selfRef)
+    ref <- runComponent component s
+    pure (handleAction ref)
 
   where
 
   handleAction
-    :: Ref (DriverState h r w f eff)
+    :: Ref (DriverState h r f s eff)
     -> f
     -> Aff (CoreEffects eff) Unit
   handleAction r q = do
-    DriverState st <- liftEff (readRef r)
-    newstate <-  pairCoTM_ (const pure) (st.component.action q) (duplicate st.state)
-    liftEff $
-      modifyRef r \(DriverState st) ->
-        DriverState st { state = newstate }
-    handleLifecycle lchs (render r)
+    st <- liftEff (readRef r)
+    tailRecM (stepCoroutine r) $ (view _action st.component) st.state q
     pure unit
 
+  stepCoroutine
+    :: Ref (DriverState h r f s eff)
+    -> CoTransformer (Maybe s) (s -> s) (Aff (CoreEffects eff)) Unit
+    -> Aff
+        (CoreEffects eff)
+        (Step (CoTransformer (Maybe s) (s -> s) (Aff (CoreEffects eff)) Unit) Unit)
+  stepCoroutine ds cot = do
+    e <- resume cot
+    case e of
+      Left _ -> pure (Done unit)
+      Right (CoTransform f k) -> do
+        st <- liftEff (readRef ds)
+        let newstate = f st.state
+        liftEff $ modifyRef ds \st' ->
+          st { state = newstate }
+        handleLifecycle lchs $ render ds
+        pure $ Loop $ k $ Just newstate
+
   runComponent
-    :: Component w (Aff (CoreEffects eff)) h f
-    -> Eff (CoreEffects eff) (Ref (DriverState h r w f eff))
-  runComponent comp = do
-    var <- initDriverState comp
-    render <<< _.selfRef <<< unDriverState =<< readRef var
+    :: Component' (CoreEffects eff) h f s
+    -> s
+    -> Eff (CoreEffects eff) (Ref (DriverState h r f s eff))
+  runComponent comp i = do
+    var <- initDriverState comp i
+    render var
     squashLifecycles var
     pure var
 
   render
-    :: Ref (DriverState h r w f eff)
+    :: Ref (DriverState h r f s eff)
     -> Eff (CoreEffects eff) Unit
-  render var = readRef var >>= \(DriverState ds) -> do
+  render var = readRef var >>= \ds -> do
     let
       handler :: f -> Aff (CoreEffects eff) Unit
-      handler = void <<< handleAction ds.selfRef
+      handler = void <<< handleAction var
       selfHandler :: f -> Aff (CoreEffects eff) Unit
       selfHandler = queuingHandler handler ds.pendingRefs
-    rendering <- renderSpec.render (handleAff <<< selfHandler) (extract ds.state) ds.rendering
-    modifyRef var \(DriverState ds') ->
-      DriverState (ds' { rendering = Just rendering })
+    rendering <- renderSpec.render
+      (handleAff <<< selfHandler) (view _render ds.component $ ds.state) ds.rendering
+    modifyRef var \ds' ->
+      ds' { rendering = Just rendering }
 
   squashLifecycles
-    :: Ref (DriverState h r w f eff)
+    :: Ref (DriverState h r f s eff)
     -> Eff (CoreEffects eff) Unit
-  squashLifecycles var = readRef var >>= \(DriverState st) -> do
+  squashLifecycles var = readRef var >>= \st -> do
     modifyRef lchs \handlers ->
       { initializers: pure $ do
           queue <- liftEff (readRef st.pendingRefs)
@@ -158,40 +175,30 @@ handleAff
   -> Eff (CoreEffects eff) Unit
 handleAff = void <<< runAff throwException (const (pure unit))
 
-newtype DriverState h r w f eff = DriverState (DriverStateR h r w f eff)
-
-type DriverStateR h r w f eff =
-  { component :: Component' w (Aff (CoreEffects eff)) h f
-  , state :: w (h f)
-  , selfRef :: Ref (DriverState h r w f eff)
+type DriverState h r f s eff =
+  { component :: Component' (CoreEffects eff) h f s
+  , state :: s
   , pendingRefs :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
   , pendingQueries :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
-  , rendering :: Maybe (r f eff)
+  , rendering :: Maybe (r s f eff)
   }
 
-unDriverState
-  :: forall h r w f eff
-   . DriverState h r w f eff
-  -> DriverStateR h r w f eff
-unDriverState (DriverState ds) = ds
-
 initDriverState
-  :: forall h r w f eff
-   . Component w (Aff (CoreEffects eff)) h f
-  -> Eff (CoreEffects eff) (Ref (DriverState h r w f eff))
-initDriverState (Component comp@{ ui }) = do
-  selfRef <- newRef (unsafeCoerce {})
+  :: forall h r f s eff
+   . Component' (CoreEffects eff) h f s
+  -> s
+  -> Eff (CoreEffects eff) (Ref (DriverState h r f s eff))
+initDriverState component s = do
   pendingRefs <- newRef (Just L.Nil)
   pendingQueries <- newRef (Just L.Nil)
   pendingOuts <- newRef (Just L.Nil)
   let
     ds =
-      { component: comp
-      , state: ui
-      , selfRef
+      { component: component
+      , state: s
       , pendingRefs
       , pendingQueries
       , rendering: Nothing
       }
-  writeRef selfRef (DriverState ds)
-  pure $ selfRef
+  ref <- newRef ds
+  pure $ ref
