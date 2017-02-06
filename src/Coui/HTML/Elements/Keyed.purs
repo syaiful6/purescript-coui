@@ -20,115 +20,115 @@ module Coui.HTML.Elements.Keyed
 
 import Data.Tuple (Tuple)
 
+import DOM.HTML.Indexed as I
+
 import Coui.HTML.Core (ElemName(..), HTML)
-import Coui.HTML.Properties (IProp, I, GlobalProperties, InteractiveEvents)
-
 import Coui.HTML.Elements (keyed)
+import Coui.HTML.Properties (IProp)
 
+type KeyedNode r i
+   = Array (IProp r i)
+  -> Array (Tuple String (HTML i))
+  -> HTML i
 
-type KeyedNode r p i
-   = Array (IProp (InteractiveEvents (GlobalProperties r)) i)
-  -> Array (Tuple String (HTML p i))
-  -> HTML p i
-
-article :: forall p i. KeyedNode () p i
+article :: forall i. KeyedNode I.HTMLarticle i
 article = keyed (ElemName "article")
 
-article_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+article_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 article_ = article []
 
-colgroup :: forall p i. KeyedNode (span :: I) p i
+colgroup :: forall i. KeyedNode I.HTMLcolgroup i
 colgroup = keyed (ElemName "colgroup")
 
-colgroup_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+colgroup_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 colgroup_ = colgroup []
 
-dialog :: forall p i. KeyedNode (open :: I) p i
+dialog :: forall i. KeyedNode I.HTMLdialog i
 dialog = keyed (ElemName "dialog")
 
-dialog_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+dialog_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 dialog_ = dialog []
 
-div :: forall p i. KeyedNode (onScroll :: I) p i
+div :: forall i. KeyedNode I.HTMLdiv i
 div = keyed (ElemName "div")
 
-div_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+div_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 div_ = div []
 
-dl :: forall p i. KeyedNode (onScroll :: I) p i
+dl :: forall i. KeyedNode I.HTMLdl i
 dl = keyed (ElemName "dl")
 
-dl_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+dl_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 dl_ = dl []
 
-fieldset :: forall p i. KeyedNode (disabled :: I, form :: I, onScroll :: I) p i
+fieldset :: forall i. KeyedNode I.HTMLfieldset i
 fieldset = keyed (ElemName "fieldset")
 
-fieldset_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+fieldset_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 fieldset_ = fieldset []
 
-footer :: forall p i. KeyedNode () p i
+footer :: forall i. KeyedNode I.HTMLfooter i
 footer = keyed (ElemName "footer")
 
-footer_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+footer_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 footer_ = footer []
 
-form :: forall p i. KeyedNode (acceptCharset :: I, action :: I, autocomplete :: I, enctype :: I, method :: I, onReset :: I, novalidate :: I, onScroll :: I, onSubmit :: I, target :: I) p i
+form :: forall i. KeyedNode I.HTMLform i
 form = keyed (ElemName "form")
 
-form_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+form_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 form_ = form []
 
-header :: forall p i. KeyedNode () p i
+header :: forall i. KeyedNode I.HTMLheader i
 header = keyed (ElemName "header")
 
-header_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+header_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 header_ = header []
 
-menu :: forall p i. KeyedNode (label :: I, onScroll :: I, menuType :: I) p i
+menu :: forall i. KeyedNode I.HTMLmenu i
 menu = keyed (ElemName "menu")
 
-menu_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+menu_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 menu_ = menu []
 
-ol :: forall p i. KeyedNode (onScroll :: I, reversed :: I, start :: I, olType :: I) p i
+ol :: forall i. KeyedNode I.HTMLol i
 ol = keyed (ElemName "ol")
 
-ol_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+ol_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 ol_ = ol []
 
-table :: forall p i. KeyedNode (sortable :: I) p i
+table :: forall i. KeyedNode I.HTMLtable i
 table = keyed (ElemName "table")
 
-table_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+table_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 table_ = table []
 
-tbody :: forall p i. KeyedNode (onScroll :: I) p i
+tbody :: forall i. KeyedNode I.HTMLtbody i
 tbody = keyed (ElemName "tbody")
 
-tbody_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+tbody_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 tbody_ = tbody []
 
-tfoot :: forall p i. KeyedNode (onScroll :: I) p i
+tfoot :: forall i. KeyedNode I.HTMLtfoot i
 tfoot = keyed (ElemName "tfoot")
 
-tfoot_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+tfoot_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 tfoot_ = tfoot []
 
-thead :: forall p i. KeyedNode () p i
+thead :: forall i. KeyedNode I.HTMLthead i
 thead = keyed (ElemName "thead")
 
-thead_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+thead_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 thead_ = thead []
 
-tr :: forall p i. KeyedNode () p i
+tr :: forall i. KeyedNode I.HTMLtr i
 tr = keyed (ElemName "tr")
 
-tr_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+tr_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 tr_ = tr []
 
-ul :: forall p i. KeyedNode (onScroll :: I) p i
+ul :: forall i. KeyedNode I.HTMLul i
 ul = keyed (ElemName "ul")
 
-ul_ :: forall p i. Array (Tuple String (HTML p i)) -> HTML p i
+ul_ :: forall i. Array (Tuple String (HTML i)) -> HTML i
 ul_ = ul []

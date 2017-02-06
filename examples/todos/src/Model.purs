@@ -2,8 +2,6 @@ module Model where
 
 import Prelude
 
-import Data.List (List(Nil))
-
 type Task =
   { description :: String
   , completed :: Boolean
@@ -16,14 +14,14 @@ initialTask s =
   }
 
 type TaskList =
-  { tasks :: List Task
+  { tasks :: Array Task
   , filter :: Filter
   , editText :: String
   }
 
 initialTaskListState :: TaskList
 initialTaskListState =
-  { tasks: Nil
+  { tasks: []
   , editText: ""
   , filter: All
   }

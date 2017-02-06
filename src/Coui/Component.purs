@@ -1,188 +1,133 @@
-module Coui.Component where
+module Coui.Component
+  ( Component(..)
+  , Component'
+  , Render
+  , Handler
+  , component
+  , ixcomponent
+  , foreach
+  , overV
+  , action
+  , both
+  , render
+  , hoist
+  , match
+  , withState
+  , module Exports
+  ) where
 
 import Prelude
 
-import Control.Monad.Aff (Aff)
-import Control.Monad.Free.Trans as FT
-import Control.Coroutine (CoTransform(CoTransform), CoTransformer, fuseWith, cotransform,
-  transform, transformCoTransformL, transformCoTransformR)
-import Control.Monad.Rec.Class (forever)
+import Control.Alt (class Alt, (<|>))
+import Control.Plus (class Plus, empty)
 
-import Data.Either (either, Either(..))
-import Data.Foldable (for_)
-import Data.List (List(..), (!!), modifyAt)
-import Data.Lens (Traversal, Prism', Lens', review, matching, lens, view)
-import Data.Maybe (Maybe(..), fromMaybe)
-import Data.Monoid (class Monoid, mempty)
-import Data.Newtype (unwrap)
-import Data.Profunctor (class Profunctor, dimap)
+import Data.Either (Either(..), either)
+import Data.Lens (class Wander, Prism', Indexed(..), Lens', lens, traversed)
+import Data.Lens.Indexed (positions)
+import Data.Monoid (class Monoid)
+import Data.Newtype (class Newtype, unwrap)
+import Data.Profunctor (class Profunctor, rmap)
 import Data.Profunctor.Choice (class Choice)
-import Data.Profunctor.Star (Star(..))
 import Data.Profunctor.Strong (class Strong)
-import Data.Tuple (Tuple(..), fst, snd)
+import Data.Traversable (class Traversable)
+import Data.Tuple (Tuple(..), snd)
 
-import Coui.HTML.Core (HTML)
+import Coui.Internal.Complet (Complet(..), Action, complet, matchAction, defaultRender, hoistM, ignore,
+  update)
+import Coui.Internal.Complet (Complet(..), Action, complet, perform,
+  update, effects, withEffects, defaultAction, defaultRender, ignore, terminate) as Exports
+
+-- | Our component just like Star profunctor.
+newtype Component m h f a b = Component (a -> Complet m h f b)
+
+derive instance newtypeComponent :: Newtype (Component m h f a b) _
+
+instance profunctorComponent :: Profunctor (Component m h f) where
+  dimap f g (Component fk) = Component (f >>> fk >>> map g)
+
+instance strongComponent :: Strong (Component m h f) where
+  first  (Component f) = Component \(Tuple s x) -> map (_ `Tuple` x) (f s)
+  second (Component f) = Component \(Tuple x s) -> map (Tuple x) (f s)
+
+instance choiceComponent :: Plus m => Choice (Component m h f) where
+  left  (Component f) = Component $ either (map Left <<< f) (pure <<< Right)
+  right (Component f) = Component $ either (pure <<< Left) (map Right <<< f)
+
+instance wanderComponent :: Plus m => Wander (Component m h f) where
+  wander t (Component k) = Component (t k)
+
+instance semigroupComponent :: Alt m => Semigroup (Component m h f a a) where
+  append (Component f) (Component g) = Component \s -> f s <|> g s
+
+instance monoidComponent :: Plus m => Monoid (Component m h f a a) where
+  mempty = Component \_ -> empty
+
+type Component' m h f s = Component m h f s s
 
 type Render h f s = s -> Array (h f)
 
-type Action eff f s t = s -> f -> CoTransformer (Maybe s) (s -> t) (Aff eff) Unit
-type Action' eff f s = Action eff f s s
+type Handler m f s = s -> Action m f s
 
-type ComponentHTML = HTML Void
+toComplet :: forall m h f s t. Component m h f s t -> s -> Complet m h f t
+toComplet (Component k) a = k a
 
-data Component eff h f s t = Component (Render h f s) (Action eff f s t)
+component :: forall m h f s. Render h f s -> Handler m f s -> Component' m h f s
+component vi act = Component \s -> complet (vi s) (act s)
 
-instance profunctorComponent :: Profunctor (Component eff h f) where
-  dimap f g (Component render action) = Component
-    (render <<< f)
-    (\s -> FT.interpret (perform f g) <<< action (f s))
+-- | Create static view, if the view can raise events then it should be handled
+-- | by other component, to handle it append the component using semigroup instance
+-- | of Component.
+render :: forall m h f s. Plus m => Render h f s -> Component' m h f s
+render v = Component \s -> complet (v s) (const ignore)
 
-instance strongComponent :: Strong (Component eff h f) where
-  first (Component render action) = Component
-    (\(Tuple a _) -> render a)
-    (\(Tuple s c) f -> FT.interpret (perform fst (_ `Tuple` c)) $ action s f)
-  second (Component render action) = Component
-    (\(Tuple _ a) -> render a)
-    (\(Tuple c s) f -> FT.interpret (perform snd (Tuple c)) $ action s f)
+overV :: forall m h v f s. (Array (h f) -> Array (v f)) -> Component' m h f s -> Component' m v f s
+overV f = Component <<< map (\(Complet (Tuple vi act)) -> complet (f vi) act) <<< unwrap
 
-instance choiceComponent :: Choice (Component eff h f) where
-  left (Component render action) = Component render' action'
-    where
-      render' = either render mempty
-      action' s f = case s of
-        Right _ -> pure unit
-        Left s' -> FT.interpret transform' (action s' f)
-      transform'
-        :: forall s t c
-         . CoTransform (Maybe s) (s -> t) ~> CoTransform (Maybe (Either s c)) (Either s c -> Either t c)
-      transform' (CoTransform o k) =
-        CoTransform (either (Left <<< o) Right) (k <<< join <<< map (either Just (const Nothing)))
-  right (Component render action) = Component render' action'
-    where
-      render' = either mempty render
-      action' s f = case s of
-        Left _ -> pure unit
-        Right s' -> FT.interpret transform' (action s' f)
-      transform'
-        :: forall s t c
-         . CoTransform (Maybe s) (s -> t) ~> CoTransform (Maybe (Either c s)) (Either c s -> Either c t)
-      transform' (CoTransform o k) =
-        CoTransform (either Left (Right <<< o)) (k <<< join <<< map (either (const Nothing) Just))
+both
+  :: forall m n h v f g s
+   . (Array (h f) -> Array (v g))
+  -> (Action m f s -> Action n g s)
+  -> Component' m h f s
+  -> Component' n v g s
+both f g = Component <<< map (\(Complet (Tuple vi act)) -> complet (f vi) (g act)) <<< unwrap
 
-instance functorComponent :: Functor (Component eff h f s) where
-  map = dimap id
+action :: forall m h f s. Handler m f s -> Component' m h f s
+action f = Component \s -> complet defaultRender (f s)
 
-instance applyComponent :: Apply (Component eff h f s) where
-  apply (Component rd1 act1) (Component rd2 act2) = Component
-    (\s -> rd1 s <> rd2 s)
-    (\s f ->
-      fuseWith
-        (\zap (CoTransform ff kk) (CoTransform fa ka) ->
-          CoTransform (\s' -> ff s' (fa s')) (\i -> zap (kk i) (ka i)))
-      (act1 s f)
-      (act2 s f))
+hoist :: forall m n h f s. (m ~> n) -> Component' m h f s -> Component' n h f s
+hoist nat = Component <<< map (hoistM nat) <<< unwrap
 
-instance applicativeComponent :: Applicative (Component eff h f s) where
-  pure a = Component (\_ -> []) (\_ _ -> cotransform (const a) $> unit)
+withState :: forall m h f s. (s -> Component' m h f s) -> Component' m h f s
+withState = Component <<< (unwrap =<< _)
 
-instance semigroupComponent :: Semigroup (Component eff h f s t) where
-  append (Component r1 a1) (Component r2 a2) =
-    Component (\s -> r1 s <> r2 s) (\s f -> a1 s f *> a2 s f)
+match :: forall m h f g s. (Functor h, Plus m) => Prism' g f -> Component' m h f s -> Component' m h g s
+match prism = Component <<< map (matchAction prism) <<< unwrap
 
-instance monoidComponent :: Monoid (Component eff h f s t) where
-  mempty = Component (\_ -> []) (\_ _ -> pure unit)
-
-perform
-  :: forall a b c d
-   . (a -> b) -> (c -> d) -> CoTransform (Maybe b) (b -> c) ~> CoTransform (Maybe a) (a -> d)
-perform f g (CoTransform o k) = CoTransform (g <<< o <<< f) (k <<< map f)
-
-type Component' eff h f s = Component eff h f s s
-
-_render :: forall eff h f s t. Lens' (Component eff h f s t) (Render h f s)
-_render = lens (\(Component r _) -> r) (\(Component _ act) r -> Component r act)
-
-_action :: forall eff h f s t. Lens' (Component eff h f s t) (Action eff f s t)
-_action = lens (\(Component _ act) -> act) (\(Component r _) act -> Component r act)
-
-defaultRender :: forall h f s. Render h f s
-defaultRender _ = []
-
-component
-  :: forall eff h f s
-   . Render h f s -> Action eff f s s -> Component' eff h f s
-component rd act = Component rd act
-
-withState
-  :: forall eff h f s
-   . (s -> Component' eff h f s) -> Component' eff h f s
-withState f = component render action
-  where
-    render :: Render h f s
-    render s = view _render (f s) s
-
-    action :: Action' eff f s
-    action s g = view _action (f s) s g
-
-focus
-  :: forall eff h f g s t. Functor h
-  => Lens' s t -> Prism' g f -> Component' eff h f t -> Component' eff h g s
-focus ls prism (Component render action) = ls $ component render' action'
-  where
-    render' :: Render h g t
-    render' = map (map $ review prism) <<< render
-
-    action' :: Action eff g t t
-    action' s f = either (\_ -> pure unit) (action s) $ matching prism f
-
-focusState
-  :: forall eff h f s t
-   . Lens' s t
-  -> Component' eff h f t
-  -> Component' eff h f s
-focusState ls = ls
-
-match
-  :: forall eff h f g s. Functor h
-  => Prism' g f -> Component' eff h f s -> Component' eff h g s
-match prism = focus id prism
-
-split
-  :: forall eff h f s t
-   . Prism' s t -> Component' eff h f t -> Component' eff h f s
-split p = p
-
-traversal
-  :: forall eff h f s t
-   . Traversal s s t t -> Component' eff h f t -> Component' eff h f s
-traversal t = withState <<< unwrap <<< t <<< Star <<< toStar
-  where
-    toStar com s = dimap (const s) id com
+ixcomponent
+  :: forall i m h f a. Plus m
+  => (i -> Component' m h f a) -> Indexed (Component m h f) i a a
+ixcomponent u = Indexed $ rmap snd (Component \(Tuple i a) -> map (Tuple i) $ unwrap (u i) a)
 
 foreach
-  :: forall eff h f s. Functor h
-  => (Int -> Component' eff h f s) -> Component' eff h (Tuple Int f) (List s)
-foreach f = component render action
+  :: forall m h f t a. (Plus m, Functor h, Traversable t)
+  => (Int -> Component' m h f a) -> Component' m h (Tuple Int f) (t a)
+foreach f = positions traversed $ ixcomponent item
   where
-    render :: Render h (Tuple Int f) (List s)
-    render sts =
-      foldWithIndex (\i st els ->
-        case f i of Component rd _ -> els <> (map (map (Tuple i)) (rd st))) sts []
+  item :: Int -> Component' m h (Tuple Int f) a
+  item i = withState \s ->
+    let
+        itemRender :: Array (h f) -> Array (h (Tuple Int f))
+        itemRender vi = map (map (Tuple i)) vi
 
-    action :: Action eff (Tuple Int f) (List s) (List s)
-    action sts (Tuple i a) =
-      for_ (sts !! i) \st ->
-        case f i of
-          Component _ act ->
-            forever (transform (_ >>= (_ !! i)))
-            `transformCoTransformL` act st a
-            `transformCoTransformR` forever (transform (modifying i))
-      where
-        modifying :: Int -> (s -> s) -> List s -> List s
-        modifying j g sts' = fromMaybe sts' (modifyAt j g sts')
+        handleEv :: Action m f a -> Action m (Tuple Int f) a
+        handleEv hd (Tuple i' a)
+          | i' == i   = map (map (map (Tuple i))) $ hd a
+          | otherwise = update s
+    in both itemRender handleEv $ f i
 
-    foldWithIndex :: forall a r. (Int -> a -> r -> r) -> List a -> r -> r
-    foldWithIndex g = go 0
-      where
-      go _ Nil         r = r
-      go i (Cons x xs) r = go (i + 1) xs (g i x r)
+_component :: forall m h f s t. Lens' (Component m h f s t) (s -> Complet m h f t)
+_component = lens (\(Component a) -> a) (\(Component _) f -> Component f)
+
+_handler :: forall m h f s. Lens' (Complet m h f s) (Action m f s)
+_handler =
+  lens (\(Complet (Tuple _ act)) -> act) (\(Complet (Tuple vi _)) f -> Complet (Tuple vi f))

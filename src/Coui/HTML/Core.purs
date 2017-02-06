@@ -1,13 +1,16 @@
 module Coui.HTML.Core
   ( HTML(..)
-  , slot
+  , ThunkF(..)
+  , Thunk
   , text
+  , thunk
   , element
   , keyed
   , prop
   , attr
   , handler
-  , ref
+  , onCreated
+  , onRemoved
   , class IsProp
   , toPropValue
   , PropName(..)
@@ -19,14 +22,30 @@ module Coui.HTML.Core
 
 import Prelude
 
-import Data.Bifunctor (class Bifunctor, bimap, rmap)
+import Data.Bifunctor (bimap)
+import Data.Exists (Exists, mkExists, runExists)
 import Data.Generic (class Generic)
 import Data.Maybe (Maybe(..))
-import Data.Newtype (class Newtype)
+import Data.MediaType (MediaType)
+import Data.Newtype (class Newtype, unwrap)
 import Data.Tuple (Tuple)
 
 import DOM.Node.Types (Element)
 import DOM.Event.Types (Event, EventType)
+import DOM.HTML.Indexed.ButtonType (ButtonType, renderButtonType)
+import DOM.HTML.Indexed.CrossOriginValue (CrossOriginValue, renderCrossOriginValue)
+import DOM.HTML.Indexed.DirValue (DirValue, renderDirValue)
+import DOM.HTML.Indexed.FormMethod (FormMethod, renderFormMethod)
+import DOM.HTML.Indexed.InputType (InputType, renderInputType)
+import DOM.HTML.Indexed.KindValue (KindValue, renderKindValue)
+import DOM.HTML.Indexed.MenuitemType (MenuitemType, renderMenuitemType)
+import DOM.HTML.Indexed.MenuType (MenuType, renderMenuType)
+import DOM.HTML.Indexed.OnOff (OnOff, renderOnOff)
+import DOM.HTML.Indexed.OrderedListType (OrderedListType, renderOrderedListType)
+import DOM.HTML.Indexed.PreloadValue (PreloadValue, renderPreloadValue)
+import DOM.HTML.Indexed.ScopeValue (ScopeValue, renderScopeValue)
+import DOM.HTML.Indexed.StepValue (StepValue, renderStepValue)
+import DOM.HTML.Indexed.WrapValue (WrapValue, renderWrapValue)
 
 import Unsafe.Coerce (unsafeCoerce)
 
@@ -36,45 +55,48 @@ import Halogen.VDom.DOM.Prop (ElemRef(..), Prop(..), PropValue, propFromBoolean,
 import Halogen.VDom (ElemName(..), Namespace(..)) as Exports
 import Halogen.VDom.DOM.Prop (Prop(..), PropValue) as Exports
 
-newtype HTML p i = HTML (VDom.VDom (Array (Prop i)) p)
+newtype HTML i = HTML (VDom.VDom (Array (Prop i)) (Exists (ThunkF i)))
 
-derive instance newtypeHTML :: Newtype (HTML p i) _
+derive instance newtypeHTML :: Newtype (HTML i) _
 
-instance bifunctorHTML :: Bifunctor HTML where
-  bimap f g (HTML vdom) = HTML (bimap (map (map g)) f vdom)
+instance functorHTML :: Functor HTML where
+  map f (HTML vdom) = HTML (bimap (map (map f)) (mapThunk f) vdom)
 
-instance functorHTML :: Functor (HTML p) where
-  map = rmap
+data ThunkF i a = ThunkF a (a -> HTML i)
 
--- | A smart constructor for widget slots in the HTML.
-slot :: forall p q. p -> HTML p q
-slot = HTML <<< VDom.Widget
+type Thunk i = Exists (ThunkF i)
+
+mapThunk :: forall a b. (a -> b) -> Thunk a -> Thunk b
+mapThunk f = runExists (\(ThunkF a rd) -> mkExists $ ThunkF a (map (map f) rd))
+
+thunk :: forall s a. (s -> HTML a) -> s -> HTML a
+thunk render a = HTML $ VDom.Widget $ mkExists (ThunkF a render)
 
 -- | Constructs a text node `HTML` value.
-text :: forall p i. String -> HTML p i
+text :: forall i. String -> HTML i
 text = HTML <<< VDom.Text
 
 -- | A smart constructor for HTML elements.
-element :: forall p i. VDom.ElemName -> Array (Prop i) -> Array (HTML p i) -> HTML p i
+element :: forall i. VDom.ElemName -> Array (Prop i) -> Array (HTML i) -> HTML i
 element = coe (\name props children -> VDom.Elem (VDom.ElemSpec Nothing name props) children)
   where
   coe
-    :: (VDom.ElemName -> Array (Prop i) -> Array (VDom.VDom (Array (Prop i)) p) -> VDom.VDom (Array (Prop i)) p)
-    -> VDom.ElemName -> Array (Prop i) -> Array (HTML p i) -> HTML p i
+    :: (VDom.ElemName -> Array (Prop i) -> Array (VDom.VDom (Array (Prop i)) (Thunk i)) -> VDom.VDom (Array (Prop i)) (Thunk i))
+    -> VDom.ElemName -> Array (Prop i) -> Array (HTML i) -> HTML i
   coe = unsafeCoerce
 
 -- | A smart constructor for HTML elements with keyed children.
-keyed :: forall p i. VDom.ElemName -> Array (Prop i) -> Array (Tuple String (HTML p i)) -> HTML p i
+keyed :: forall i. VDom.ElemName -> Array (Prop i) -> Array (Tuple String (HTML i)) -> HTML i
 keyed = coe (\name props children -> VDom.Keyed (VDom.ElemSpec Nothing name props) children)
   where
   coe
-    :: (VDom.ElemName -> Array (Prop i) -> Array (Tuple String (VDom.VDom (Array (Prop i)) p)) -> VDom.VDom (Array (Prop i)) p)
-    -> VDom.ElemName -> Array (Prop i) -> Array (Tuple String (HTML p i)) -> HTML p i
+    :: (VDom.ElemName -> Array (Prop i) -> Array (Tuple String (VDom.VDom (Array (Prop i)) (Thunk i))) -> VDom.VDom (Array (Prop i)) (Thunk i))
+    -> VDom.ElemName -> Array (Prop i) -> Array (Tuple String (HTML i)) -> HTML i
   coe = unsafeCoerce
 
 -- | Create a HTML property.
-prop :: forall value i. IsProp value => PropName value -> Maybe AttrName -> value -> Prop i
-prop (PropName name) an v = Property name (toPropValue v)
+prop :: forall value i. IsProp value => PropName value -> value -> Prop i
+prop (PropName name) = Property name <<< toPropValue
 
 -- | Create a HTML attribute.
 attr :: forall i. AttrName -> String -> Prop i
@@ -84,10 +106,18 @@ attr (AttrName name) = Attribute Nothing name
 handler :: forall i. EventType -> (Event -> Maybe i) -> Prop i
 handler = Handler
 
-ref :: forall i. (Maybe Element -> Maybe i) -> Prop i
-ref f = Ref $ f <<< case _ of
-  Created x -> Just x
+onCreated :: forall i. (Element -> Maybe i) -> Prop i
+onCreated f = Ref $ case _ of
+  Created x -> f x
   Removed _ -> Nothing
+
+onRemoved :: forall i. (Element -> Maybe i) -> Prop i
+onRemoved f = Ref $ case _ of
+  Created _ -> Nothing
+  Removed x -> f x
+
+className :: String -> ClassName
+className = ClassName
 
 class IsProp a where
   toPropValue :: a -> PropValue
@@ -103,6 +133,51 @@ instance numberIsProp :: IsProp Number where
 
 instance booleanIsProp :: IsProp Boolean where
   toPropValue = propFromBoolean
+
+instance mediaTypeIsProp :: IsProp MediaType where
+  toPropValue = propFromString <<< unwrap
+
+instance buttonTypeIsProp :: IsProp ButtonType where
+  toPropValue = propFromString <<< renderButtonType
+
+instance crossOriginValueIsProp :: IsProp CrossOriginValue where
+  toPropValue = propFromString <<< renderCrossOriginValue
+
+instance dirValueIsProp :: IsProp DirValue where
+  toPropValue = propFromString <<< renderDirValue
+
+instance formMethodIsProp :: IsProp FormMethod where
+  toPropValue = propFromString <<< renderFormMethod
+
+instance inputTypeIsProp :: IsProp InputType where
+  toPropValue = propFromString <<< renderInputType
+
+instance kindValueIsProp :: IsProp KindValue where
+  toPropValue = propFromString <<< renderKindValue
+
+instance menuitemTypeIsProp :: IsProp MenuitemType where
+  toPropValue = propFromString <<< renderMenuitemType
+
+instance menuTypeIsProp :: IsProp MenuType where
+  toPropValue = propFromString <<< renderMenuType
+
+instance onOffIsProp :: IsProp OnOff where
+  toPropValue = propFromString <<< renderOnOff
+
+instance orderedListTypeIsProp :: IsProp OrderedListType where
+  toPropValue = propFromString <<< renderOrderedListType
+
+instance preloadValueIsProp :: IsProp PreloadValue where
+  toPropValue = propFromString <<< renderPreloadValue
+
+instance scopeValueIsProp :: IsProp ScopeValue where
+  toPropValue = propFromString <<< renderScopeValue
+
+instance stepValueIsProp :: IsProp StepValue where
+  toPropValue = propFromString <<< renderStepValue
+
+instance wrapValueIsProp :: IsProp WrapValue where
+  toPropValue = propFromString <<< renderWrapValue
 
 -- | A type-safe wrapper for property names.
 -- |
@@ -125,9 +200,6 @@ derive instance genericAttrName :: Generic AttrName
 
 -- | A wrapper for strings which are used as CSS classes.
 newtype ClassName = ClassName String
-
-className :: String -> ClassName
-className = ClassName
 
 derive instance newtypeClassName :: Newtype ClassName _
 derive newtype instance eqClassName :: Eq ClassName

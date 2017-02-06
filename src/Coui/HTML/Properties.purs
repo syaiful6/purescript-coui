@@ -1,16 +1,9 @@
 module Coui.HTML.Properties
   ( IProp(..)
-  , I
   , prop
   , attr
-
-  , ButtonType(..)
-  , InputType(..)
-  , MenuType(..)
-  , MenuitemType(..)
-  , OrderedListType(..)
-  , NumeralType(..)
-  , CaseType(..)
+  , onRemoved
+  , onCreated
 
   , alt
   , charset
@@ -30,24 +23,17 @@ module Coui.HTML.Properties
   , target
   , title
 
-  , FormMethod(..)
   , method
   , action
   , enctype
-  , novalidate
+  , noValidate
 
-  , buttonType
-  , inputType
-  , mediaType
-  , menuType
-  , menuitemType
-  , olType
-
+  , type_
   , value
   , disabled
   , enabled
   , required
-  , readonly
+  , readOnly
   , spellcheck
   , checked
   , selected
@@ -59,34 +45,29 @@ module Coui.HTML.Properties
   , draggable
   , tabIndex
 
-  , LengthLiteral(..)
-  , printLengthLiteral
-
-  , GlobalAttributes
-  , GlobalEvents
-  , MouseEvents
-  , DragEvents
-  , TouchEvents
-  , PointerEvents
-  , KeyEvents
-  , FocusEvents
-  , TransitionEvents
-  , InteractiveEvents
-  , GlobalProperties
+  , module I
   ) where
 
 import Prelude
 
-import Data.Foreign (toForeign)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe)
 import Data.MediaType (MediaType)
 import Data.Newtype (class Newtype, unwrap)
 import Data.String (joinWith)
 
 import DOM.Node.Types (Element)
+import DOM.HTML.Indexed (CSSPixel) as I
+import DOM.HTML.Indexed.ButtonType (ButtonType(..)) as I
+import DOM.HTML.Indexed.FormMethod (FormMethod(..)) as I
+import DOM.HTML.Indexed.InputType (InputType(..)) as I
+import DOM.HTML.Indexed.MenuitemType (MenuitemType(..)) as I
+import DOM.HTML.Indexed.MenuType (MenuType(..)) as I
+import DOM.HTML.Indexed.OnOff (OnOff(..)) as I
+import DOM.HTML.Indexed.OrderedListType (OrderedListType(..)) as I
 
-import Coui.HTML.Core (class IsProp, ClassName, AttrName(..), PropName(..), Prop)
+import Coui.HTML.Core (class IsProp, ClassName, AttrName, PropName(..), Prop)
 import Coui.HTML.Core as Core
+
 import Unsafe.Coerce (unsafeCoerce)
 
 -- | The phantom row `r` can be thought of as a context which is synthesized in
@@ -95,364 +76,132 @@ newtype IProp (r :: # *) i = IProp (Prop i)
 
 derive instance newtypeIProp :: Newtype (IProp r i) _
 
--- | A dummy type to use in the phantom row.
-data I
-
 -- | Creates an indexed HTML property.
 prop
   :: forall value r i
    . IsProp value
   => PropName value
-  -> Maybe AttrName
   -> value
   -> IProp r i
-prop = (unsafeCoerce :: (PropName value -> Maybe AttrName -> value -> Prop i) -> PropName value -> Maybe AttrName -> value -> IProp r i) Core.prop
+prop = (unsafeCoerce :: (PropName value -> value -> Prop i) -> PropName value -> value -> IProp r i) Core.prop
 
 -- | Creates an indexed HTML attribute.
 attr :: forall r i. AttrName -> String -> IProp r i
 attr = (unsafeCoerce :: (AttrName -> String -> Prop i) -> AttrName -> String -> IProp r i) Core.attr
 
-alt :: forall r i. String -> IProp (alt :: I | r) i
-alt = prop (PropName "alt") (Just $ AttrName "alt")
+onCreated :: forall r i. (Element -> Maybe i) -> IProp r i
+onCreated = (unsafeCoerce :: ((Element -> Maybe i) -> Prop i) -> (Element -> Maybe i) -> IProp r i) Core.onCreated
 
-charset :: forall r i. String -> IProp (charset :: I | r) i
-charset = prop (PropName "charset") (Just $ AttrName "charset")
+onRemoved :: forall r i. (Element -> Maybe i) -> IProp r i
+onRemoved = (unsafeCoerce :: ((Element -> Maybe i) -> Prop i) -> (Element -> Maybe i) -> IProp r i) Core.onRemoved
 
-class_ :: forall r i. ClassName -> IProp (class :: I | r) i
-class_ = prop (PropName "className") (Just $ AttrName "class") <<< unwrap
+alt :: forall r i. String -> IProp (alt :: String | r) i
+alt = prop (PropName "alt")
 
-classes :: forall r i. Array ClassName -> IProp (class :: I | r) i
-classes = prop (PropName "className") (Just $ AttrName "class") <<< joinWith " " <<< map unwrap
+charset :: forall r i. String -> IProp (charset :: String | r) i
+charset = prop (PropName "charset")
 
-cols :: forall r i. Int -> IProp (cols :: I | r) i
-cols = prop (PropName "cols") (Just $ AttrName "cols")
+class_ :: forall r i. ClassName -> IProp (class :: String | r) i
+class_ = prop (PropName "className") <<< unwrap
 
-rows :: forall r i. Int -> IProp (rows :: I | r) i
-rows = prop (PropName "rows") (Just $ AttrName "rows")
+classes :: forall r i. Array ClassName -> IProp (class :: String | r) i
+classes = prop (PropName "className") <<< joinWith " " <<< map unwrap
 
-colSpan :: forall r i. Int -> IProp (colSpan :: I | r) i
-colSpan = prop (PropName "colSpan") (Just $ AttrName "colspan")
+cols :: forall r i. Int -> IProp (cols :: Int | r) i
+cols = prop (PropName "cols")
 
-rowSpan :: forall r i. Int -> IProp (rowSpan :: I | r) i
-rowSpan = prop (PropName "rowSpan") (Just $ AttrName "rowspan")
+rows :: forall r i. Int -> IProp (rows :: Int | r) i
+rows = prop (PropName "rows")
 
-for :: forall r i. String -> IProp (for :: I | r) i
-for = prop (PropName "htmlFor") (Just $ AttrName "for")
+colSpan :: forall r i. Int -> IProp (colSpan :: Int | r) i
+colSpan = prop (PropName "colSpan")
 
-data LengthLiteral
-  = Pixels Int
-  | Percent Number
+rowSpan :: forall r i. Int -> IProp (rowSpan :: Int | r) i
+rowSpan = prop (PropName "rowSpan")
 
-printLengthLiteral :: LengthLiteral -> String
-printLengthLiteral = case _ of
-  Pixels n -> show n
-  Percent n -> show n <> "%"
+for :: forall r i. String -> IProp (for :: String | r) i
+for = prop (PropName "htmlFor")
 
-height :: forall r i. LengthLiteral -> IProp (height :: I | r) i
-height = prop (PropName "height") (Just $ AttrName "height") <<< printLengthLiteral
+height :: forall r i. I.CSSPixel -> IProp (height :: I.CSSPixel | r) i
+height = prop (PropName "height")
 
-width :: forall r i. LengthLiteral -> IProp (width :: I | r) i
-width = prop (PropName "width") (Just $ AttrName "width") <<< printLengthLiteral
+width :: forall r i. I.CSSPixel -> IProp (width :: I.CSSPixel | r) i
+width = prop (PropName "width")
 
-href :: forall r i. String -> IProp (href :: I | r) i
-href = prop (PropName "href") (Just $ AttrName "href")
+href :: forall r i. String -> IProp (href :: String | r) i
+href = prop (PropName "href")
 
-id_ :: forall r i. String -> IProp (id :: I | r) i
-id_ = prop (PropName "id") (Just $ AttrName "id")
+id_ :: forall r i. String -> IProp (id :: String | r) i
+id_ = prop (PropName "id")
 
-name :: forall r i. String -> IProp (name :: I | r) i
-name = prop (PropName "name") (Just $ AttrName "name")
+name :: forall r i. String -> IProp (name :: String | r) i
+name = prop (PropName "name")
 
-rel :: forall r i. String -> IProp (rel :: I | r) i
-rel = prop (PropName "rel") (Just $ AttrName "rel")
+rel :: forall r i. String -> IProp (rel :: String | r) i
+rel = prop (PropName "rel")
 
-src :: forall r i. String -> IProp (src :: I | r) i
-src = prop (PropName "src") (Just $ AttrName "src")
+src :: forall r i. String -> IProp (src :: String | r) i
+src = prop (PropName "src")
 
-target :: forall r i. String -> IProp (target :: I | r) i
-target = prop (PropName "target") (Just $ AttrName "target")
+target :: forall r i. String -> IProp (target :: String | r) i
+target = prop (PropName "target")
 
-title :: forall r i. String -> IProp (title :: I | r) i
-title = prop (PropName "title") (Just $ AttrName "title")
+title :: forall r i. String -> IProp (title :: String | r) i
+title = prop (PropName "title")
 
-data FormMethod
-  = POST
-  | GET
+method :: forall r i. I.FormMethod -> IProp (method :: I.FormMethod | r) i
+method = prop (PropName "method")
 
-renderFormMethod :: FormMethod -> String
-renderFormMethod = case _ of
-  POST -> "post"
-  GET -> "get"
+action :: forall r i. String -> IProp (action :: String | r) i
+action = prop (PropName "action")
 
-method :: forall r i. FormMethod -> IProp (method :: I | r) i
-method = prop (PropName "method") (Just $ AttrName "method") <<< renderFormMethod
+enctype :: forall r i. MediaType -> IProp (enctype :: MediaType | r) i
+enctype = prop (PropName "enctype")
 
-action :: forall r i. String -> IProp (action :: I | r) i
-action = prop (PropName "action") (Just $ AttrName "action")
+noValidate :: forall r i. Boolean -> IProp (noValidate :: Boolean | r) i
+noValidate = prop (PropName "noValidate")
 
-enctype :: forall r i. MediaType -> IProp (action :: I | r) i
-enctype = prop (PropName "enctype") (Just $ AttrName "enctype") <<< unwrap
+type_ :: forall r i value. IsProp value => value -> IProp (type :: value | r) i
+type_ = prop (PropName "type")
 
-novalidate :: forall r i. Boolean -> IProp (action :: I | r) i
-novalidate = prop (PropName "noValidate") (Just $ AttrName "novalidate")
+value :: forall r i. String -> IProp (value :: String | r) i
+value = prop (PropName "value")
 
-data InputType
-  = InputButton
-  | InputCheckbox
-  | InputColor
-  | InputDate
-  | InputDatetime
-  | InputDatetimeLocal
-  | InputEmail
-  | InputFile
-  | InputHidden
-  | InputImage
-  | InputMonth
-  | InputNumber
-  | InputPassword
-  | InputRadio
-  | InputRange
-  | InputReset
-  | InputSearch
-  | InputSubmit
-  | InputTel
-  | InputText
-  | InputTime
-  | InputUrl
-  | InputWeek
-
-renderInputType :: InputType -> String
-renderInputType = case _ of
-  InputButton -> "button"
-  InputCheckbox -> "checkbox"
-  InputColor -> "color"
-  InputDate -> "date"
-  InputDatetime -> "datetime"
-  InputDatetimeLocal -> "datetime-local"
-  InputEmail -> "email"
-  InputFile -> "file"
-  InputHidden -> "hidden"
-  InputImage -> "image"
-  InputMonth -> "month"
-  InputNumber -> "number"
-  InputPassword -> "password"
-  InputRadio -> "radio"
-  InputRange -> "range"
-  InputReset -> "reset"
-  InputSearch -> "search"
-  InputSubmit -> "submit"
-  InputTel -> "tel"
-  InputText -> "text"
-  InputTime -> "time"
-  InputUrl -> "url"
-  InputWeek -> "week"
-
-type_ :: forall r i value. IsProp value => value -> IProp (r :: # *) i
-type_ = prop (PropName "type") (Just $ AttrName "type")
-
-inputType :: forall r i. InputType -> IProp (inputType :: I | r) i
-inputType = type_ <<< renderInputType
-
-data MenuType
-  = MenuList
-  | MenuContext
-  | MenuToolbar
-
-renderMenuType :: MenuType -> String
-renderMenuType = case _ of
-  MenuList -> "list"
-  MenuContext -> "context"
-  MenuToolbar -> "toolbar"
-
-menuType :: forall r i. MenuType -> IProp (menuType :: I | r) i
-menuType = type_ <<< renderMenuType
-
-data MenuitemType
-  = MenuitemCommand
-  | MenuitemCheckbox
-  | MenuitemRadio
-
-renderMenuitemType :: MenuitemType -> String
-renderMenuitemType = case _ of
-  MenuitemCommand -> "command"
-  MenuitemCheckbox -> "checkbox"
-  MenuitemRadio -> "radio"
-
-menuitemType :: forall r i. MenuitemType -> IProp (menuitemType :: I | r) i
-menuitemType= type_ <<< renderMenuitemType
-
-mediaType :: forall r i. MediaType -> IProp (mediaType :: I | r) i
-mediaType = type_ <<< unwrap
-
-data ButtonType
-  = ButtonButton
-  | ButtonSubmit
-  | ButtonReset
-
-renderButtonType :: ButtonType -> String
-renderButtonType = case _ of
-  ButtonButton -> "button"
-  ButtonSubmit -> "submit"
-  ButtonReset -> "reset"
-
-buttonType :: forall r i. ButtonType -> IProp (buttonType :: I | r) i
-buttonType = type_ <<< renderButtonType
-
-data CaseType
-  = Uppercase
-  | Lowercase
-
-data NumeralType
-  = NumeralDecimal
-  | NumeralRoman CaseType
-
-data OrderedListType
-  = OrderedListNumeric NumeralType
-  | OrderedListAlphabetic CaseType
-
-renderOrderedListType :: OrderedListType -> String
-renderOrderedListType = case _ of
-  OrderedListNumeric NumeralDecimal -> "1"
-  OrderedListNumeric (NumeralRoman Lowercase) -> "i"
-  OrderedListNumeric (NumeralRoman Uppercase) -> "I"
-  OrderedListAlphabetic Lowercase -> "a"
-  OrderedListAlphabetic Uppercase -> "A"
-
-olType :: forall r i. OrderedListType -> IProp (olType :: I | r) i
-olType = type_ <<< renderOrderedListType
-
-value :: forall r i. String -> IProp (value :: I | r) i
-value = prop (PropName "value") (Just $ AttrName "value")
-
-enabled :: forall r i. Boolean -> IProp (disabled :: I | r) i
+enabled :: forall r i. Boolean -> IProp (disabled :: Boolean | r) i
 enabled = disabled <<< not
 
-disabled :: forall r i. Boolean -> IProp (disabled :: I | r) i
-disabled = prop (PropName "disabled") (Just $ AttrName "disabled")
+disabled :: forall r i. Boolean -> IProp (disabled :: Boolean | r) i
+disabled = prop (PropName "disabled")
 
-required :: forall r i. Boolean -> IProp (required :: I | r) i
-required = prop (PropName "required") (Just $ AttrName "required")
+required :: forall r i. Boolean -> IProp (required :: Boolean | r) i
+required = prop (PropName "required")
 
-readonly :: forall r i. Boolean -> IProp (readonly :: I | r) i
-readonly = prop (PropName "readOnly") (Just $ AttrName "readonly")
+readOnly :: forall r i. Boolean -> IProp (readOnly :: Boolean | r) i
+readOnly = prop (PropName "readOnly")
 
-spellcheck :: forall r i. Boolean -> IProp (spellcheck :: I | r) i
-spellcheck = prop (PropName "spellcheck") (Just $ AttrName "spellcheck")
+spellcheck :: forall r i. Boolean -> IProp (spellcheck :: Boolean | r) i
+spellcheck = prop (PropName "spellcheck")
 
-checked :: forall r i. Boolean -> IProp (checked :: I | r) i
-checked = prop (PropName "checked") (Just $ AttrName "checked")
+checked :: forall r i. Boolean -> IProp (checked :: Boolean | r) i
+checked = prop (PropName "checked")
 
-selected :: forall r i. Boolean -> IProp (selected :: I | r) i
-selected = prop (PropName "selected") (Just $ AttrName "selected")
+selected :: forall r i. Boolean -> IProp (selected :: Boolean | r) i
+selected = prop (PropName "selected")
 
-placeholder :: forall r i. String -> IProp (placeholder :: I | r) i
-placeholder = prop (PropName "placeholder") (Just $ AttrName "placeholder")
+placeholder :: forall r i. String -> IProp (placeholder :: String | r) i
+placeholder = prop (PropName "placeholder")
 
-autocomplete :: forall r i. Boolean -> IProp (autocomplete :: I | r) i
-autocomplete = prop (PropName "autocomplete") (Just $ AttrName "autocomplete") <<< (\b -> if b then "on" else "off")
+autocomplete :: forall r i. Boolean -> IProp (autocomplete :: I.OnOff | r) i
+autocomplete = prop (PropName "autocomplete") <<< (\b -> if b then I.On else I.Off)
 
-autofocus :: forall r i. Boolean -> IProp (autofocus :: I | r) i
-autofocus = prop (PropName "autofocus") (Just $ AttrName "autofocus")
+autofocus :: forall r i. Boolean -> IProp (autofocus :: Boolean | r) i
+autofocus = prop (PropName "autofocus")
 
-multiple :: forall r i. Boolean -> IProp (multiple :: I | r) i
-multiple = prop (PropName "multiple") (Just $ AttrName "multiple")
+multiple :: forall r i. Boolean -> IProp (multiple :: Boolean | r) i
+multiple = prop (PropName "multiple")
 
-draggable :: forall r i. Boolean -> IProp (draggable :: I | r) i
-draggable = prop (PropName "draggable") (Just $ AttrName "draggable")
+draggable :: forall r i. Boolean -> IProp (draggable :: Boolean | r) i
+draggable = prop (PropName "draggable")
 
-tabIndex :: forall r i. Int -> IProp (tabIndex :: I | r) i
-tabIndex = prop (PropName "tabIndex") (Just $ AttrName "tabindex")
-
-type GlobalAttributes r =
-  ( id :: I
-  , title :: I
-  , class :: I
-  , style :: I
-  , spellcheck :: I
-  , draggable :: I
-  , lang :: I
-  , translate :: I
-  , dir :: I
-  , hidden :: I
-  , tabIndex :: I
-  , accessKey :: I
-  , contentEditable :: I
-  | r
-  )
-
-type GlobalEvents r =
-  ( onContextMenu :: I
-  | r
-  )
-
-type MouseEvents r =
-  ( onDoubleClick :: I
-  , onClick :: I
-  , onMouseDown :: I
-  , onMouseEnter :: I
-  , onMouseLeave :: I
-  , onMouseMove :: I
-  , onMouseOver :: I
-  , onMouseOut :: I
-  , onMouseUp :: I
-  | r
-  )
-
-type DragEvents r =
-  ( onDrag :: I
-  , onDragEnd :: I
-  , onDragExit :: I
-  , onDragEnter :: I
-  , onDragLeave :: I
-  , onDragOver :: I
-  , onDragStart :: I
-  , onDrop :: I
-  | r
-  )
-
-type TouchEvents r =
-  ( onTouchCancel :: I
-  , onTouchEnd :: I
-  , onTouchEnter :: I
-  , onTouchLeave :: I
-  , onTouchMove :: I
-  , onTouchStart :: I
-  | r
-  )
-
-type PointerEvents r =
-  ( onPointerOver :: I
-  , onPointerEnter :: I
-  , onPointerDown :: I
-  , onPointerMove :: I
-  , onPointerUp :: I
-  , onPointerCancel :: I
-  , onPointerOut :: I
-  , onPointerLeave :: I
-  , gotPointerCapture :: I
-  , lostPointerCapture :: I
-  | r
-  )
-
-type KeyEvents r =
-  ( onKeyDown :: I
-  , onKeyUp :: I
-  , onKeyPress :: I
-  | r
-  )
-
-type TransitionEvents r =
-  ( onTransitionEnd :: I
-  | r
-  )
-
-type FocusEvents r =
-  ( onBlur :: I
-  , onFocus :: I
-  , onFocusIn :: I
-  , onFocusOut :: I
-  | r
-  )
-
-type InteractiveEvents r = FocusEvents (TransitionEvents (KeyEvents (PointerEvents (TouchEvents (DragEvents (MouseEvents r))))))
-type GlobalProperties r = GlobalAttributes (GlobalEvents r)
+tabIndex :: forall r i. Int -> IProp (tabIndex :: Int | r) i
+tabIndex = prop (PropName "tabIndex")

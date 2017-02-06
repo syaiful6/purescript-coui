@@ -7,24 +7,21 @@ module Coui.Aff.Driver
 
 import Prelude
 
-import Control.Monad.Aff (Aff, forkAll, runAff)
+import Control.Monad.Aff (Aff, forkAll, later, forkAff, runAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throwException)
 import Control.Monad.Eff.Ref (Ref, modifyRef, readRef, writeRef, newRef)
-import Control.Coroutine (CoTransformer, CoTransform(CoTransform))
-import Control.Monad.Free.Trans (resume)
-import Control.Monad.Rec.Class (Step(..), tailRecM)
+import Data.Newtype (unwrap)
 import Control.Parallel (parSequence_)
 
-import Data.Either (Either(..))
-import Data.Lens (view)
 import Data.List as L
 import Data.List ((:))
 import Data.Traversable (for_, sequence_)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), maybe)
+import Data.Tuple (Tuple(..))
 
-import Coui.Component (Component', _render, _action)
+import Coui.Component (Component', Complet(..), Action)
 import Coui.Aff.Effects (CoreEffects)
 
 
@@ -47,7 +44,7 @@ type LifecycleHandlers eff =
 runUI
   :: forall h r s f eff
    . RenderSpec h r s eff
-  -> Component' (CoreEffects eff) h f s
+  -> Component' (Aff (CoreEffects eff)) h f s
   -> s
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
 runUI renderSpec component s = do
@@ -58,7 +55,7 @@ runUI'
   :: forall h r s f eff
    . Ref (LifecycleHandlers eff)
   -> RenderSpec h r s eff
-  -> Component' (CoreEffects eff) h f s
+  -> Component' (Aff (CoreEffects eff)) h f s
   -> s
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
 runUI' lchs renderSpec component s = do
@@ -75,48 +72,37 @@ runUI' lchs renderSpec component s = do
     -> Aff (CoreEffects eff) Unit
   handleAction r q = do
     st <- liftEff (readRef r)
-    tailRecM (stepCoroutine r) $ (view _action st.component) st.state q
-    pure unit
+    case st.handler q of
+      Tuple (Just newstate) message ->
+        case unwrap st.component newstate of
+          Complet (Tuple vi hd) -> do
+            liftEff $ modifyRef r \st' ->
+              st' { state = newstate, handler = hd }
+            handleLifecycle lchs $ render r vi
+            void $ forkAff $ message >>= maybe (pure unit) (step r)
+      Tuple Nothing message ->
+        void $ forkAff $ message >>= maybe (pure unit) (step r)
 
-  stepCoroutine
-    :: Ref (DriverState h r f s eff)
-    -> CoTransformer (Maybe s) (s -> s) (Aff (CoreEffects eff)) Unit
-    -> Aff
-        (CoreEffects eff)
-        (Step (CoTransformer (Maybe s) (s -> s) (Aff (CoreEffects eff)) Unit) Unit)
-  stepCoroutine ds cot = do
-    e <- resume cot
-    case e of
-      Left _ -> pure (Done unit)
-      Right (CoTransform f k) -> do
-        st <- liftEff (readRef ds)
-        let newstate = f st.state
-        liftEff $ modifyRef ds \st' ->
-          st { state = newstate }
-        handleLifecycle lchs $ render ds
-        pure $ Loop $ k $ Just newstate
+  step :: Ref (DriverState h r f s eff) -> f -> Aff (CoreEffects eff) Unit
+  step var msg = void $ later $ handleAction var msg
 
   runComponent
-    :: Component' (CoreEffects eff) h f s
+    :: Component' (Aff (CoreEffects eff)) h f s
     -> s
     -> Eff (CoreEffects eff) (Ref (DriverState h r f s eff))
   runComponent comp i = do
-    var <- initDriverState comp i
-    render var
-    squashLifecycles var
-    pure var
+    Tuple vi var <- initDriverState comp i
+    render var vi *> squashLifecycles var *> pure var
 
   render
     :: Ref (DriverState h r f s eff)
+    -> Array (h f)
     -> Eff (CoreEffects eff) Unit
-  render var = readRef var >>= \ds -> do
+  render var vi = readRef var >>= \ds -> do
     let
       handler :: f -> Aff (CoreEffects eff) Unit
       handler = void <<< handleAction var
-      selfHandler :: f -> Aff (CoreEffects eff) Unit
-      selfHandler = queuingHandler handler ds.pendingRefs
-    rendering <- renderSpec.render
-      (handleAff <<< selfHandler) (view _render ds.component $ ds.state) ds.rendering
+    rendering <- renderSpec.render (handleAff <<< handler) vi ds.rendering
     modifyRef var \ds' ->
       ds' { rendering = Just rendering }
 
@@ -176,8 +162,9 @@ handleAff
 handleAff = void <<< runAff throwException (const (pure unit))
 
 type DriverState h r f s eff =
-  { component :: Component' (CoreEffects eff) h f s
+  { component :: Component' (Aff (CoreEffects eff)) h f s
   , state :: s
+  , handler :: Action (Aff (CoreEffects eff)) f s
   , pendingRefs :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
   , pendingQueries :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
   , rendering :: Maybe (r s f eff)
@@ -185,20 +172,23 @@ type DriverState h r f s eff =
 
 initDriverState
   :: forall h r f s eff
-   . Component' (CoreEffects eff) h f s
+   . Component' (Aff (CoreEffects eff)) h f s
   -> s
-  -> Eff (CoreEffects eff) (Ref (DriverState h r f s eff))
+  -> Eff (CoreEffects eff) (Tuple (Array (h f)) (Ref (DriverState h r f s eff)))
 initDriverState component s = do
   pendingRefs <- newRef (Just L.Nil)
   pendingQueries <- newRef (Just L.Nil)
   pendingOuts <- newRef (Just L.Nil)
-  let
-    ds =
-      { component: component
-      , state: s
-      , pendingRefs
-      , pendingQueries
-      , rendering: Nothing
-      }
-  ref <- newRef ds
-  pure $ ref
+  case unwrap component s of
+    Complet (Tuple vi handler) -> do
+      let
+        ds =
+          { component: component
+          , state: s
+          , handler
+          , pendingRefs
+          , pendingQueries
+          , rendering: Nothing
+          }
+      ref <- newRef ds
+      pure $ Tuple vi ref

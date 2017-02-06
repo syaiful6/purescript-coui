@@ -2,6 +2,8 @@ module Component.Task where
 
 import Prelude
 
+import Control.Alternative (class Alternative)
+
 import Coui as Co
 import Coui.HTML as HH
 import Coui.HTML.Events as HE
@@ -14,36 +16,33 @@ data TaskAction
   | UpdateDescription String
   | RemoveTask
 
-task :: forall eff. Co.Component' eff Co.HTML TaskAction Task
-task = Co.component render action
+task :: forall m. Alternative m => Co.Component' m Co.HTML TaskAction Task
+task = Co.component (pure <<< HH.thunk render) action
   where
-  render :: Co.Render Co.HTML TaskAction Task
+  render :: Task -> Co.HTML TaskAction
   render t =
-    [ HH.tr_ <<< map (HH.td_ <<< pure) $
-        [ HH.input
-            [ HP.inputType HP.InputCheckbox
-            , HP.title "Mark as completed"
-            , HP.checked t.completed
-            , HE.onChecked (HE.input ToggleCompleted)
-            ]
-        , HH.input
-            [ HP.inputType HP.InputText
-            , HP.placeholder "Task description"
-            , HP.autofocus true
-            , HP.value t.description
-            , HE.onValueChange (HE.input UpdateDescription)
-            ]
-        , HH.button
-            [ HP.title "Remove task"
-            , HE.onClick (HE.input_ RemoveTask)
-            ]
-            [ HH.text "✖" ]
-        ]
-    ]
+    HH.tr_ <<< map (HH.td_ <<< pure) $
+      [ HH.input
+          [ HP.type_  HP.InputCheckbox
+          , HP.title "Mark as completed"
+          , HP.checked t.completed
+          , HE.onChecked (HE.input ToggleCompleted)
+          ]
+      , HH.input
+          [ HP.type_ HP.InputText
+          , HP.placeholder "Task description"
+          , HP.autofocus true
+          , HP.value t.description
+          , HE.onValueChange (HE.input UpdateDescription)
+          ]
+      , HH.button
+          [ HP.title "Remove task"
+          , HE.onClick (HE.input_ $ RemoveTask)
+          ]
+          [ HH.text "✖" ]
+      ]
 
-  action :: Co.Action' eff TaskAction Task
-  action _ (UpdateDescription desc) = void $ do
-    Co.modifyState (_ { description = desc })
-  action _ (ToggleCompleted b) = void $ do
-    Co.modifyState (_ { completed = b })
-  action _ _ = pure unit
+  action :: Co.Handler m TaskAction Task
+  action s (UpdateDescription desc) = Co.update $ s { description = desc }
+  action s (ToggleCompleted b) = Co.update $ s { completed = b }
+  action _ _ = Co.ignore
