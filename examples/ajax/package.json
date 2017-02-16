@@ -1,0 +1,10 @@
+{
+  "name": "ajax-component",
+  "private": true,
+  "files": [],
+  "scripts": {
+    "build": "pulp browserify --optimise --to dist/ajax-component.js"
+  },
+  "dependencies": {
+  }
+}

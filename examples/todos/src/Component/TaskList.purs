@@ -5,12 +5,12 @@ import Prelude
 import Control.Monad.Except (runExcept)
 import Control.Alternative (class Alternative, class Plus)
 
-import Data.Array ((:), length, filter, deleteAt)
 import Data.Either (either, Either(..))
 import Data.Foldable (fold)
 import Data.Foreign (toForeign)
 import Data.Foreign.Class (readProp)
 import Data.Lens (Prism', Lens', lens, prism)
+import Data.List (List, (:), length, filter, deleteAt)
 import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Tuple (Tuple(..), uncurry)
 
@@ -39,7 +39,7 @@ _TaskAction = prism (uncurry TaskAction) \ta ->
     TaskAction i a -> Right (Tuple i a)
     _ -> Left ta
 
-_tasks :: Lens' TaskList (Array Task)
+_tasks :: Lens' TaskList (List Task)
 _tasks = lens _.tasks (_ { tasks = _ })
 
 taskList :: forall m. Alternative m => Co.Component' m Co.HTML TaskListAction TaskList
@@ -56,7 +56,7 @@ container :: forall m f s. Co.Component' m Co.HTML f s -> Co.Component' m Co.HTM
 container = Co.overV \vi ->
   [ HH.div [ HP.class_ $ HH.className "container" ] vi ]
 
-headers :: forall m. Alternative m => Co.Component' m Co.HTML TaskListAction TaskList
+headers :: forall m. Plus m => Co.Component' m Co.HTML TaskListAction TaskList
 headers = Co.component render action
   where
   render :: Co.Render Co.HTML TaskListAction TaskList

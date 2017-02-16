@@ -1,7 +1,9 @@
 module Coui.HTML.Core
   ( HTML(..)
   , ThunkF(..)
-  , Thunk
+  , Thunk(..)
+  , Graft(..)
+  , unGraft
   , text
   , thunk
   , element
@@ -24,6 +26,7 @@ import Prelude
 
 import Data.Bifunctor (bimap)
 import Data.Exists (Exists, mkExists, runExists)
+import Data.Coyoneda (Coyoneda, liftCoyoneda)
 import Data.Generic (class Generic)
 import Data.Maybe (Maybe(..))
 import Data.MediaType (MediaType)
@@ -55,22 +58,31 @@ import Halogen.VDom.DOM.Prop (ElemRef(..), Prop(..), PropValue, propFromBoolean,
 import Halogen.VDom (ElemName(..), Namespace(..)) as Exports
 import Halogen.VDom.DOM.Prop (Prop(..), PropValue) as Exports
 
-newtype HTML i = HTML (VDom.VDom (Array (Prop i)) (Exists (ThunkF i)))
+newtype HTML i = HTML (VDom.VDom (Array (Prop i)) (Thunk i))
 
 derive instance newtypeHTML :: Newtype (HTML i) _
 
 instance functorHTML :: Functor HTML where
-  map f (HTML vdom) = HTML (bimap (map (map f)) (mapThunk f) vdom)
+  map f (HTML vdom) = HTML (bimap (map (map f)) (map f) vdom)
+
+newtype Thunk i = Thunk (Coyoneda Graft i)
+
+derive newtype instance functorThunk :: Functor Thunk
 
 data ThunkF i a = ThunkF a (a -> HTML i)
 
-type Thunk i = Exists (ThunkF i)
+newtype Graft i = Graft (Exists (ThunkF i))
 
-mapThunk :: forall a b. (a -> b) -> Thunk a -> Thunk b
-mapThunk f = runExists (\(ThunkF a rd) -> mkExists $ ThunkF a (map (map f) rd))
+instance functorGraft :: Functor Graft where
+  map f (Graft g) =
+    g # runExists \(ThunkF a rd) ->
+      Graft $ mkExists $ ThunkF a (map f <<< rd)
+
+unGraft :: forall i. Graft i -> Exists (ThunkF i)
+unGraft (Graft g) = g
 
 thunk :: forall s a. (s -> HTML a) -> s -> HTML a
-thunk render a = HTML $ VDom.Widget $ mkExists (ThunkF a render)
+thunk render a = HTML $ VDom.Widget $ Thunk $ liftCoyoneda $ Graft $ mkExists (ThunkF a render)
 
 -- | Constructs a text node `HTML` value.
 text :: forall i. String -> HTML i

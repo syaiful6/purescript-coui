@@ -10,6 +10,7 @@
     "purescript-aff": "^2.0.1",
     "purescript-dom": "^3.1.0",
     "purescript-dom-indexed": "^1.0.0",
+    "purescript-exists": "^2.0.0",
     "purescript-foreign": "^3.0.0",
     "purescript-free": "^3.4.0",
     "purescript-halogen-vdom": "^1.0.0",

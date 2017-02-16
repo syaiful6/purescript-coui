@@ -2,6 +2,8 @@ module Counter.Counter where
 
 import Prelude
 
+import Control.Plus (class Plus)
+
 import Coui as Co
 import Coui.HTML as HH
 import Coui.HTML.Events as HE
@@ -11,7 +13,7 @@ data Action = Increment | Decrement
 
 type State = Int
 
-counter :: forall m. Applicative m => Co.Component' m Co.HTML Action State
+counter :: forall m. Plus m => Co.Component' m Co.HTML Action State
 counter = Co.component render update
   where
   update :: Co.Handler m Action State

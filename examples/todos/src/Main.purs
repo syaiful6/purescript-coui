@@ -8,9 +8,9 @@ import Coui.Aff (CoreEffects, runCouiAff, awaitBody)
 import Coui.VDom.Driver (runUI)
 
 import Component.TaskList (taskList)
-import Model (initialTaskListState)
+import Model (initialTaskList)
 
 main :: forall eff. Eff (CoreEffects eff) Unit
 main = runCouiAff do
   body <- awaitBody
-  runUI taskList initialTaskListState body
+  runUI taskList initialTaskList body

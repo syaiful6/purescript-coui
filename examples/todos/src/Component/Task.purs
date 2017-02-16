@@ -2,7 +2,7 @@ module Component.Task where
 
 import Prelude
 
-import Control.Alternative (class Alternative)
+import Control.Plus (class Plus)
 
 import Coui as Co
 import Coui.HTML as HH
@@ -16,7 +16,7 @@ data TaskAction
   | UpdateDescription String
   | RemoveTask
 
-task :: forall m. Alternative m => Co.Component' m Co.HTML TaskAction Task
+task :: forall m. Plus m => Co.Component' m Co.HTML TaskAction Task
 task = Co.component (pure <<< HH.thunk render) action
   where
   render :: Task -> Co.HTML TaskAction

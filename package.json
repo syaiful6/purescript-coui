@@ -4,7 +4,8 @@
   "scripts": {
     "clean": "rimraf output && rimraf .pulp-cache",
     "example-counter": "bower link && cd examples/counter && bower link purescript-coui && bower install && npm run build",
-    "example-todos": "bower link && cd examples/todos && bower link purescript-coui && bower install && npm run build"
+    "example-todos": "bower link && cd examples/todos && bower link purescript-coui && bower install && npm run build",
+    "example-ajax": "bower link && cd examples/ajax && bower link purescript-coui && bower install && npm run build"
   },
   "dependencies": {
     "react": "^0.14.8",

@@ -1,0 +1,17 @@
+{
+  "name": "ajax-component",
+  "private": true,
+  "ignore": [
+    "**/.*",
+    "node_modules",
+    "bower_components",
+    "output"
+  ],
+  "dependencies": {
+    "purescript-affjax": "^3.0.0",
+    "purescript-coui": "*"
+  },
+  "devDependencies": {
+    "purescript-psci-support": "^2.0.0"
+  }
+}

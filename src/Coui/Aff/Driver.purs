@@ -7,7 +7,7 @@ module Coui.Aff.Driver
 
 import Prelude
 
-import Control.Monad.Aff (Aff, forkAll, later, forkAff, runAff)
+import Control.Monad.Aff (Aff, forkAll, forkAff, runAff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 import Control.Monad.Eff.Exception (throwException)
@@ -59,7 +59,6 @@ runUI'
   -> s
   -> Aff (CoreEffects eff) (Driver f (Aff (CoreEffects eff)))
 runUI' lchs renderSpec component s = do
-  fresh <- liftEff $ newRef 0
   handleLifecycle lchs do
     ref <- runComponent component s
     pure (handleAction ref)
@@ -84,7 +83,9 @@ runUI' lchs renderSpec component s = do
         void $ forkAff $ message >>= maybe (pure unit) (step r)
 
   step :: Ref (DriverState h r f s eff) -> f -> Aff (CoreEffects eff) Unit
-  step var msg = void $ later $ handleAction var msg
+  step var msg = do
+    st <- liftEff (readRef var)
+    queuingHandler (handleAction var) st.pendingQueries msg
 
   runComponent
     :: Component' (Aff (CoreEffects eff)) h f s
@@ -101,10 +102,10 @@ runUI' lchs renderSpec component s = do
   render var vi = readRef var >>= \ds -> do
     let
       handler :: f -> Aff (CoreEffects eff) Unit
-      handler = void <<< handleAction var
+      handler = handleAction var
     rendering <- renderSpec.render (handleAff <<< handler) vi ds.rendering
-    modifyRef var \ds' ->
-      ds' { rendering = Just rendering }
+    modifyRef var \st ->
+      st { rendering = Just rendering }
 
   squashLifecycles
     :: Ref (DriverState h r f s eff)

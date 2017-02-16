@@ -6,8 +6,8 @@ module Coui.Internal.Complet
   , ignore
   , perform
   , update
-  , effects
-  , withEffects
+  , onlyEffect
+  , withEffect
   , defaultAction
   , defaultRender
   , matchAction
@@ -48,7 +48,7 @@ instance applyComplet :: Alt m => Apply (Complet m h f) where
     go f =
       case fk f, fa f of
         Tuple s1 act1, Tuple s2 act2 ->
-          Tuple (s1 <*> s2) (act2 <|> act1)
+          Tuple (s1 <*> s2) (act1 <|> act2)
 
 instance applicativeComplet :: Plus m => Applicative (Complet m h f) where
   pure a = Complet $ Tuple [] \_ -> Tuple (pure a) empty
@@ -60,7 +60,7 @@ instance altComplet :: Alt m => Alt (Complet m h f) where
     go f =
       case fk f, fa f of
         Tuple s1 act1, Tuple s2 act2 ->
-          Tuple (ala Last foldMap [s1, s2]) (act2 <|> act1)
+          Tuple (ala Last foldMap [s1, s2]) (act1 <|> act2)
 
 instance plusComponent :: Plus m => Plus (Complet m h f) where
   empty = Complet $ Tuple [] \_ -> Tuple Nothing empty
@@ -78,13 +78,13 @@ perform :: forall m f s. Maybe s -> m (Maybe f) -> Tuple (Maybe s) (m (Maybe f))
 perform s act = Tuple s act
 
 update :: forall m f s. Plus m => s -> Tuple (Maybe s) (m (Maybe f))
-update s = Tuple (Just s) empty
+update s = Tuple (pure s) empty
 
-effects :: forall m f s. m (Maybe f) -> Tuple (Maybe s) (m (Maybe f))
-effects eff = Tuple Nothing eff
+onlyEffect :: forall m f s. m (Maybe f) -> Tuple (Maybe s) (m (Maybe f))
+onlyEffect eff = Tuple Nothing eff
 
-withEffects :: forall m f s. s -> m (Maybe f) -> Tuple (Maybe s) (m (Maybe f))
-withEffects s eff = Tuple (Just s) eff
+withEffect :: forall m f s. s -> m (Maybe f) -> Tuple (Maybe s) (m (Maybe f))
+withEffect s eff = Tuple (pure s) eff
 
 -- | Ignore the event, dont update the state and empty async action.
 ignore :: forall m f s. Plus m => Tuple (Maybe s) (m (Maybe f))

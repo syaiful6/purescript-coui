@@ -9,6 +9,7 @@ import Control.Monad.Aff (Aff)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
 
+import Data.Coyoneda (lowerCoyoneda)
 import Data.Exists (runExists)
 import Data.Function.Uncurried as Fn
 import Data.Maybe (Maybe(..))
@@ -31,7 +32,7 @@ import Unsafe.Coerce (unsafeCoerce)
 import Coui.Aff.Driver (CoreEffects, Driver)
 import Coui.Aff.Driver as AD
 import Coui.Component (Component')
-import Coui.HTML.Core (HTML(..), ThunkF(..), Thunk)
+import Coui.HTML.Core (HTML(..), ThunkF(..), Thunk(..), unGraft)
 import Coui.HTML as HH
 
 type VHTML f = V.VDom (Array (VP.Prop f)) (Thunk f)
@@ -59,16 +60,20 @@ mkSpec handler document = V.VDomSpec { buildWidget, buildAttributes, document }
       -> V.VDomMachine (CoreEffects eff) (Thunk f) DOM.Node
     buildWidget spec = render
       where
-        render = runExists \(ThunkF a rder) -> do
-          V.Step node m h <- V.buildVDom spec (unwrap $ rder a)
-          pure (V.Step node (Fn.runFn4 patch (unsafeCoerce a) node m h) h)
+        render = case _ of
+          Thunk co ->
+            unGraft (lowerCoyoneda co) # runExists \(ThunkF a rder) -> do
+              V.Step node m h <- V.buildVDom spec (unwrap (rder a))
+              pure (V.Step node (Fn.runFn4 patch (unsafeCoerce a) node m h) h)
 
-        patch = Fn.mkFn4 \a node step halt -> runExists \(ThunkF b rder) ->
-          if Fn.runFn2 refEq a b
-            then pure (V.Step node (Fn.runFn4 patch a node step halt) halt)
-          else do
-            V.Step node' m h <- step (unwrap $ rder b)
-            pure (V.Step node' (Fn.runFn4 patch (unsafeCoerce b) node' m h) h)
+        patch = Fn.mkFn4 \a node step halt -> case _ of
+          Thunk co ->
+            unGraft (lowerCoyoneda co) # runExists \(ThunkF b rder) ->
+              if Fn.runFn2 refEq a b
+                then pure (V.Step node (Fn.runFn4 patch a node step halt) halt)
+              else do
+                V.Step node' m h <- step (unwrap (rder b))
+                pure (V.Step node' (Fn.runFn4 patch (unsafeCoerce b) node' m h) h)
 
 runUI
   :: forall f s eff

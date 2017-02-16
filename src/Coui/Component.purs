@@ -8,7 +8,7 @@ module Coui.Component
   , foreach
   , overV
   , action
-  , both
+  , transform
   , render
   , hoist
   , match
@@ -35,7 +35,7 @@ import Data.Tuple (Tuple(..), snd)
 import Coui.Internal.Complet (Complet(..), Action, complet, matchAction, defaultRender, hoistM, ignore,
   update)
 import Coui.Internal.Complet (Complet(..), Action, complet, perform,
-  update, effects, withEffects, defaultAction, defaultRender, ignore, terminate) as Exports
+  update, onlyEffect, withEffect, defaultAction, defaultRender, ignore, terminate) as Exports
 
 -- | Our component just like Star profunctor.
 newtype Component m h f a b = Component (a -> Complet m h f b)
@@ -83,13 +83,13 @@ render v = Component \s -> complet (v s) (const ignore)
 overV :: forall m h v f s. (Array (h f) -> Array (v f)) -> Component' m h f s -> Component' m v f s
 overV f = Component <<< map (\(Complet (Tuple vi act)) -> complet (f vi) act) <<< unwrap
 
-both
+transform
   :: forall m n h v f g s
    . (Array (h f) -> Array (v g))
   -> (Action m f s -> Action n g s)
   -> Component' m h f s
   -> Component' n v g s
-both f g = Component <<< map (\(Complet (Tuple vi act)) -> complet (f vi) (g act)) <<< unwrap
+transform f g = Component <<< map (\(Complet (Tuple vi act)) -> complet (f vi) (g act)) <<< unwrap
 
 action :: forall m h f s. Handler m f s -> Component' m h f s
 action f = Component \s -> complet defaultRender (f s)
@@ -103,9 +103,7 @@ withState = Component <<< (unwrap =<< _)
 match :: forall m h f g s. (Functor h, Plus m) => Prism' g f -> Component' m h f s -> Component' m h g s
 match prism = Component <<< map (matchAction prism) <<< unwrap
 
-ixcomponent
-  :: forall i m h f a. Plus m
-  => (i -> Component' m h f a) -> Indexed (Component m h f) i a a
+ixcomponent :: forall i m h f a. (i -> Component' m h f a) -> Indexed (Component m h f) i a a
 ixcomponent u = Indexed $ rmap snd (Component \(Tuple i a) -> map (Tuple i) $ unwrap (u i) a)
 
 foreach
@@ -123,7 +121,7 @@ foreach f = positions traversed $ ixcomponent item
         handleEv hd (Tuple i' a)
           | i' == i   = map (map (map (Tuple i))) $ hd a
           | otherwise = update s
-    in both itemRender handleEv $ f i
+    in transform itemRender handleEv $ f i
 
 _component :: forall m h f s t. Lens' (Component m h f s t) (s -> Complet m h f t)
 _component = lens (\(Component a) -> a) (\(Component _) f -> Component f)
