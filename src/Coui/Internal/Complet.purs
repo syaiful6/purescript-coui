@@ -25,6 +25,7 @@ import Data.Foldable (foldMap)
 import Data.Lens (Prism', review, matching)
 import Data.Maybe (Maybe(..))
 import Data.Maybe.Last (Last(..))
+import Data.Monoid (class Monoid)
 import Data.Newtype (class Newtype, ala)
 import Data.Tuple (Tuple(..))
 
@@ -53,8 +54,8 @@ instance applyComplet :: Alt m => Apply (Complet m h f) where
 instance applicativeComplet :: Plus m => Applicative (Complet m h f) where
   pure a = Complet $ Tuple [] \_ -> Tuple (pure a) empty
 
-instance altComplet :: Alt m => Alt (Complet m h f) where
-  alt (Complet (Tuple v1 fk)) (Complet (Tuple v2 fa)) = Complet $ Tuple (v1 <> v2) go
+instance semigroupComplet :: Alt m => Semigroup (Complet m h f a) where
+  append (Complet (Tuple v1 fk)) (Complet (Tuple v2 fa)) = Complet $ Tuple (v1 <> v2) go
     where
     -- pick the last one
     go f =
@@ -62,8 +63,8 @@ instance altComplet :: Alt m => Alt (Complet m h f) where
         Tuple s1 act1, Tuple s2 act2 ->
           Tuple (ala Last foldMap [s1, s2]) (act1 <|> act2)
 
-instance plusComponent :: Plus m => Plus (Complet m h f) where
-  empty = Complet $ Tuple [] \_ -> Tuple Nothing empty
+instance monoidComplet :: Plus m => Monoid (Complet m h f a) where
+  mempty = Complet $ Tuple [] \_ -> Tuple Nothing empty
 
 complet :: forall m h f a. Array (h f) -> Action m f a -> Complet m h f a
 complet vi hd = Complet $ Tuple vi hd

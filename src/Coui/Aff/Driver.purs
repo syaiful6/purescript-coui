@@ -76,7 +76,7 @@ runUI' lchs renderSpec component s = do
         case unwrap st.component newstate of
           Complet (Tuple vi hd) -> do
             liftEff $ modifyRef r \st' ->
-              st' { state = newstate, handler = hd }
+              st' { handler = hd }
             handleLifecycle lchs $ render r vi
             void $ forkAff $ message >>= maybe (pure unit) (step r)
       Tuple Nothing message ->
@@ -164,7 +164,6 @@ handleAff = void <<< runAff throwException (const (pure unit))
 
 type DriverState h r f s eff =
   { component :: Component' (Aff (CoreEffects eff)) h f s
-  , state :: s
   , handler :: Action (Aff (CoreEffects eff)) f s
   , pendingRefs :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
   , pendingQueries :: Ref (Maybe (L.List (Aff (CoreEffects eff) Unit)))
@@ -185,7 +184,6 @@ initDriverState component s = do
       let
         ds =
           { component: component
-          , state: s
           , handler
           , pendingRefs
           , pendingQueries

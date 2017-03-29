@@ -18,13 +18,13 @@ module Coui.Component
 
 import Prelude
 
-import Control.Alt (class Alt, (<|>))
-import Control.Plus (class Plus, empty)
+import Control.Alt (class Alt)
+import Control.Plus (class Plus)
 
 import Data.Either (Either(..), either)
 import Data.Lens (class Wander, Prism', Indexed(..), Lens', lens, traversed)
 import Data.Lens.Indexed (positions)
-import Data.Monoid (class Monoid)
+import Data.Monoid (class Monoid, mempty)
 import Data.Newtype (class Newtype, unwrap)
 import Data.Profunctor (class Profunctor, rmap)
 import Data.Profunctor.Choice (class Choice)
@@ -56,11 +56,11 @@ instance choiceComponent :: Plus m => Choice (Component m h f) where
 instance wanderComponent :: Plus m => Wander (Component m h f) where
   wander t (Component k) = Component (t k)
 
-instance semigroupComponent :: Alt m => Semigroup (Component m h f a a) where
-  append (Component f) (Component g) = Component \s -> f s <|> g s
+instance semigroupComponent :: Alt m => Semigroup (Component m h f a b) where
+  append (Component f) (Component g) = Component \s -> f s <> g s
 
-instance monoidComponent :: Plus m => Monoid (Component m h f a a) where
-  mempty = Component \_ -> empty
+instance monoidComponent :: Plus m => Monoid (Component m h f a b) where
+  mempty = Component \_ -> mempty
 
 type Component' m h f s = Component m h f s s
 
